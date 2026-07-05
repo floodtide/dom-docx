@@ -1,0 +1,108 @@
+{
+  "name": "dom-docx",
+  "version": "0.1.0",
+  "description": "Convert semantic HTML fragments to native, editable Word documents (OOXML)",
+  "license": "MIT",
+  "author": "Blair Googer",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dom-docx/dom-docx.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dom-docx/dom-docx/issues"
+  },
+  "homepage": "https://github.com/dom-docx/dom-docx#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "html",
+    "docx",
+    "word",
+    "ooxml",
+    "converter",
+    "document",
+    "cheerio",
+    "office"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE",
+    "API.md",
+    "examples"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "node": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./browser": {
+      "types": "./dist/browser.d.ts",
+      "browser": "./dist/browser/dom-docx.browser.js",
+      "default": "./dist/browser/dom-docx.browser.js"
+    }
+  },
+  "bin": {
+    "dom-docx": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && cp src/converter/computed-style-snapshot.browser.js dist/converter/",
+    "build:all": "npm run build && npm run build:browser",
+    "prepack": "npm run build",
+    "build:browser": "node scripts/build-browser.mjs",
+    "test:suite": "tsx tools/validator.ts",
+    "test:suite:priority": "tsx tools/validator.ts --priority",
+    "test:suite:strict": "tsx tools/validator.ts --strict-visual",
+    "test:showcase": "tsx tools/showcase-runner.ts",
+    "test:benchmark": "tsx tools/benchmark-runner.ts all",
+    "test:inline-guard": "tsx tools/inline-path-guard.ts",
+    "test:config": "tsx tools/config-options-test.ts",
+    "label:renders": "tsx tools/label-renders.ts",
+    "test:calibration": "tsx tools/calibration-runner.ts",
+    "test:pack-smoke": "node scripts/pack-smoke.mjs",
+    "setup": "playwright install chromium",
+    "typecheck": "tsc --noEmit",
+    "test:wild": "tsx tools/wild-runner.ts",
+    "wild:corpus": "tsx tools/wild-corpus-build.ts",
+    "concordance": "tsx tools/concordance.ts"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "cheerio": "^1.2.0",
+    "docx": "^9.5.0",
+    "fflate": "^0.8.3"
+  },
+  "devDependencies": {
+    "@turbodocx/html-to-docx": "^1.22.0",
+    "@types/node": "^22.15.0",
+    "@types/pixelmatch": "^5.2.6",
+    "@types/pngjs": "^6.0.5",
+    "@xarsh/ooxml-validator": "^0.1.10",
+    "esbuild": "^0.25.12",
+    "html-to-docx": "^1.8.0",
+    "pdf-to-img": "^6.2.0",
+    "pdfjs-dist": "~5.6.205",
+    "pixelmatch": "^7.1.0",
+    "playwright": "^1.52.0",
+    "pngjs": "^7.0.0",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  },
+  "peerDependencies": {
+    "playwright": ">=1.40.0"
+  },
+  "peerDependenciesMeta": {
+    "playwright": {
+      "optional": true
+    }
+  }
+}

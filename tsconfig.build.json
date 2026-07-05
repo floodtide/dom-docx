@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true
+  },
+  "//": "Only the runtime entries + their import graph \u2014 harness files (validator, runners, generator) are excluded so devDeps never reach the published package.",
+  "include": [
+    "src/index.ts",
+    "src/browser.ts",
+    "src/cli.ts"
+  ]
+}

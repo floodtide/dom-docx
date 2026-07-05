@@ -1,0 +1,10 @@
+# Local-only strategy / research (not open-sourced)
+internal/
+
+node_modules/
+dist/
+output/**/*
+!output/**/.gitkeep
+playwright-report/
+test-results/
+.DS_Store

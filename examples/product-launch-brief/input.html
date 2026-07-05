@@ -1,0 +1,120 @@
+<style>
+        .brief { font-family: "Trebuchet MS", Arial, sans-serif; }
+        .hero {
+          background: #1a1a2e;
+          color: #fff;
+          padding: 24px 28px;
+          margin-bottom: 18px;
+        }
+        .hero-kicker {
+          margin: 0;
+          font-size: 11px;
+          letter-spacing: 0.15em;
+          text-transform: uppercase;
+          color: #a8dadc;
+        }
+        .hero h1 {
+          margin: 10px 0 6px;
+          color: #fff;
+          font-size: 32px;
+          font-weight: bold;
+        }
+        .hero-date { margin: 0; color: #cbd5e1; font-size: 14px; }
+        .callout {
+          background: #f0f7ff;
+          padding: 14px 18px;
+          margin-bottom: 16px;
+          border-left: 5px solid #457b9d;
+        }
+        .callout strong { color: #1d3557; }
+        .callout span { color: #334155; }
+        .section-label {
+          font-size: 12px;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: #1d3557;
+          margin-bottom: 8px;
+        }
+        .section-label strong { color: #1d3557; }
+        table.kpi-table {
+          border-collapse: collapse;
+          width: 100%;
+          background: #f8fafc;
+        }
+        table.kpi-table tr.header td {
+          background: #1d3557;
+          color: #fff;
+          padding: 10px;
+        }
+        table.kpi-table td {
+          padding: 10px;
+          border-bottom: 1px solid #dbeafe;
+        }
+        table.kpi-table td.num { text-align: right; }
+        h2.section {
+          font-size: 14px;
+          color: #1d3557;
+          margin-top: 20px;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+        }
+        table.funnel {
+          border-collapse: collapse;
+          width: 100%;
+          border-color: #cbd5e1;
+        }
+        table.funnel td { padding: 8px; border: 1px solid #cbd5e1; }
+        table.funnel tr.header td { background: #e8eef5; }
+        table.funnel td.num { text-align: right; }
+        table.funnel tr.highlight td { background: #f0f7ff; }
+        ul.roadmap { color: #44403c; }
+        .badge {
+          padding: 1px 6px;
+          font-size: 11px;
+        }
+        .badge-shipped { background: #bbf7d0; color: #14532d; }
+        .badge-building { background: #fde68a; color: #92400e; }
+        .badge-planned { background: #e7e5e4; color: #57534e; }
+        .footer { color: #1d3557; font-size: 13px; }
+        .footer a { color: #457b9d; }
+      </style>
+      <div class="brief">
+        <div class="hero">
+          <p class="hero-kicker">Product launch</p>
+          <h1>Atlas CRM 3.0</h1>
+          <p class="hero-date">General availability · April 14</p>
+        </div>
+        <div class="callout">
+          <strong>North star:</strong>
+          <span> Cut time-to-first-deal by 40% for mid-market sales teams.</span>
+        </div>
+        <p class="section-label"><strong>Launch KPIs</strong> · target 90 days</p>
+        <table class="kpi-table" border="0" cellpadding="10">
+          <tr class="header">
+            <td><strong>Metric</strong></td>
+            <td class="num"><strong>Target</strong></td>
+          </tr>
+          <tr><td>Activations</td><td class="num">12,000</td></tr>
+          <tr><td>Week-4 retention</td><td class="num">68%</td></tr>
+          <tr><td>NPS</td><td class="num">4.6</td></tr>
+        </table>
+        <h2 class="section">Activation funnel</h2>
+        <table class="funnel" border="1" cellpadding="8">
+          <tr class="header">
+            <td><strong>Stage</strong></td>
+            <td class="num"><strong>Count</strong></td>
+            <td class="num"><strong>Conversion</strong></td>
+          </tr>
+          <tr><td>Signup</td><td class="num">12,400</td><td class="num">100%</td></tr>
+          <tr><td>Trial</td><td class="num">9,800</td><td class="num">79%</td></tr>
+          <tr><td>Qualified</td><td class="num">6,200</td><td class="num">50%</td></tr>
+          <tr class="highlight"><td><strong>Closed</strong></td><td class="num"><strong>3,100</strong></td><td class="num"><strong>25%</strong></td></tr>
+        </table>
+        <h2 class="section">Roadmap</h2>
+        <ul class="roadmap">
+          <li><span class="badge badge-shipped">SHIPPED</span> Pipeline AI summaries</li>
+          <li><span class="badge badge-building">BUILDING</span> Mobile offline mode</li>
+          <li><span class="badge badge-planned">PLANNED</span> Enterprise SSO &amp; audit log</li>
+        </ul>
+        <p class="footer">Owner: <strong>Jordan Lee</strong> · <a href="mailto:launch@example.com">launch@example.com</a></p>
+      </div>

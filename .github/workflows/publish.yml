@@ -1,0 +1,51 @@
+name: Publish
+
+# Release: bump version in package.json, commit, tag vX.Y.Z, push tag.
+# Requires NPM_TOKEN repo secret (npmjs.com → Access Tokens → Granular, publish-only).
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify tag matches package.json version
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          EXPECTED="${TAG#v}"
+          ACTUAL=$(node -pe "JSON.parse(require('fs').readFileSync('package.json','utf8')).version")
+          if [ "$EXPECTED" != "$ACTUAL" ]; then
+            echo "::error::Tag $TAG does not match package.json version $ACTUAL (expected v$ACTUAL)"
+            exit 1
+          fi
+          echo "Publishing dom-docx@$ACTUAL for tag $TAG"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          registry-url: https://registry.npmjs.org
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm run build:browser
+      - run: npm run test:inline-guard
+      - run: npm run test:config
+      - run: npm run test:pack-smoke
+
+      - name: Publish to npm
+        run: npm publish --provenance --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

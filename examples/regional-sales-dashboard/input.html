@@ -1,0 +1,129 @@
+<style>
+        .dashboard { font-family: Arial, Helvetica, sans-serif; }
+        .header {
+          background: #115e59;
+          color: #ccfbf1;
+          padding: 16px 20px;
+          margin-bottom: 14px;
+        }
+        .header h1 {
+          margin: 0;
+          font-size: 22px;
+          color: #fff;
+        }
+        .header .subtitle {
+          margin: 6px 0 0;
+          font-size: 12px;
+          color: #99f6e4;
+        }
+        .legend { font-size: 12px; margin-bottom: 12px; }
+        .tag {
+          padding: 2px 8px;
+        }
+        .tag-above {
+          background: #d1fae5;
+          color: #065f46;
+        }
+        .tag-below {
+          background: #fce7f3;
+          color: #9d174d;
+          margin-left: 6px;
+        }
+        table.metrics {
+          border-collapse: collapse;
+          width: 100%;
+          font-size: 13px;
+        }
+        table.metrics td {
+          padding: 8px;
+          border: 1px solid #ccc;
+        }
+        table.metrics tr.head {
+          background: #581c87;
+          color: #f3e8ff;
+        }
+        table.metrics td.num {
+          text-align: right;
+          font-family: Consolas, monospace;
+        }
+        table.metrics tr.alt { background: #f0fdfa; }
+        table.metrics tr.total {
+          background: #115e59;
+          color: #fff;
+        }
+        .delta-up { color: #059669; }
+        .delta-down { color: #db2777; }
+        .pct-above { background: #d1fae5; color: #065f46; }
+        .pct-below { background: #fce7f3; color: #9d174d; }
+        h2.leaderboard {
+          font-size: 13px;
+          margin-top: 20px;
+          color: #581c87;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+        }
+        ol.leaderboard { font-size: 14px; }
+        .mono { font-family: Consolas, monospace; }
+        .quota-good { color: #059669; }
+        .quota-warn { color: #d97706; }
+      </style>
+      <div class="dashboard">
+        <div class="header">
+          <h1>Regional Sales Dashboard</h1>
+          <p class="subtitle">March · USD millions</p>
+        </div>
+        <p class="legend">
+          <span class="tag tag-above">▲ Above plan</span>
+          <span class="tag tag-below">▼ Below plan</span>
+        </p>
+        <table class="metrics" border="1" cellpadding="8">
+          <tr class="head">
+            <td><strong>Region</strong></td>
+            <td class="num"><strong>Actual</strong></td>
+            <td class="num"><strong>Plan</strong></td>
+            <td class="num"><strong>Δ</strong></td>
+            <td class="num"><strong>% plan</strong></td>
+          </tr>
+          <tr>
+            <td>West</td>
+            <td class="num">$2.41</td>
+            <td class="num">$2.20</td>
+            <td class="num delta-up">+9.5%</td>
+            <td class="num"><span class="pct-above">110%</span></td>
+          </tr>
+          <tr class="alt">
+            <td>East</td>
+            <td class="num">$1.98</td>
+            <td class="num">$2.05</td>
+            <td class="num delta-down">-3.4%</td>
+            <td class="num"><span class="pct-below">97%</span></td>
+          </tr>
+          <tr>
+            <td>EMEA</td>
+            <td class="num">$1.62</td>
+            <td class="num">$1.50</td>
+            <td class="num delta-up">+8.0%</td>
+            <td class="num"><span class="pct-above">108%</span></td>
+          </tr>
+          <tr class="alt">
+            <td>APAC</td>
+            <td class="num">$1.15</td>
+            <td class="num">$1.20</td>
+            <td class="num delta-down">-4.2%</td>
+            <td class="num"><span class="pct-below">96%</span></td>
+          </tr>
+          <tr class="total">
+            <td><strong>Total</strong></td>
+            <td class="num"><strong>$7.16</strong></td>
+            <td class="num"><strong>$6.95</strong></td>
+            <td class="num"><strong>+3.0%</strong></td>
+            <td class="num"><strong>103%</strong></td>
+          </tr>
+        </table>
+        <h2 class="leaderboard">Rep leaderboard</h2>
+        <ol class="leaderboard">
+          <li><strong>A. Chen</strong> — <span class="mono">$840k</span> <span class="quota-good">(128% quota)</span></li>
+          <li><strong>M. Ortiz</strong> — <span class="mono">$790k</span> <span class="quota-good">(119% quota)</span></li>
+          <li><strong>S. Patel</strong> — <span class="mono">$755k</span> <span class="quota-warn">(104% quota)</span></li>
+        </ol>
+      </div>

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>React Dashboard (CDN, no build)</title>
+  <!-- CDN React + Babel: whole example lives in this one file, no build step. -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 96px;
+      width: 816px;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 14px;
+      line-height: 1.4;
+      color: #111;
+      background: #fff;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    function StatCard({ label, value, delta, up, accent }) {
+      return (
+        <div style={{
+          flex: 1,
+          background: "#f0f7ff",
+          borderLeft: "4px solid " + accent,
+          padding: "16px 18px"
+        }}>
+          <div style={{ color: "#5b6b7c", fontSize: "12px", fontWeight: "bold" }}>
+            {label}
+          </div>
+          <div style={{ color: "#1d3557", fontSize: "30px", fontWeight: "bold" }}>
+            {value}
+          </div>
+          <div style={{ color: up ? "#2a9d8f" : "#e63946", fontSize: "13px" }}>
+            {(up ? "▲ " : "▼ ") + delta}
+          </div>
+        </div>
+      );
+    }
+
+    function Dashboard() {
+      return (
+        <div>
+          <h1 style={{ color: "#1d3557", fontSize: "22px", margin: "0 0 4px" }}>Q3 Performance</h1>
+          <p style={{ color: "#5b6b7c", fontSize: "13px", margin: "0 0 16px" }}>
+            July – September 2026 · company-wide metrics
+          </p>
+          <div style={{ display: "flex", gap: "16px", marginBottom: "20px" }}>
+            <StatCard
+              label="REVENUE"
+              value="$2.4M"
+              delta="12% vs last quarter"
+              up
+              accent="#457b9d"
+            />
+            <StatCard
+              label="ACTIVE USERS"
+              value="18,204"
+              delta="3% vs last quarter"
+              up={false}
+              accent="#e76f51"
+            />
+          </div>
+          <h2 style={{ color: "#1d3557", fontSize: "15px", margin: "0 0 8px" }}>Revenue by channel</h2>
+          <table style={{ borderCollapse: "collapse", width: "100%", fontSize: "13px" }} border="1" cellPadding="8">
+            <tbody>
+              <tr style={{ background: "#1d3557", color: "#fff" }}>
+                <td><strong>Channel</strong></td>
+                <td style={{ textAlign: "right" }}><strong>Q3</strong></td>
+                <td style={{ textAlign: "right" }}><strong>Share</strong></td>
+              </tr>
+              <tr>
+                <td>Direct sales</td>
+                <td style={{ textAlign: "right" }}>$1.1M</td>
+                <td style={{ textAlign: "right" }}>46%</td>
+              </tr>
+              <tr>
+                <td>Self-serve</td>
+                <td style={{ textAlign: "right" }}>$820K</td>
+                <td style={{ textAlign: "right" }}>34%</td>
+              </tr>
+              <tr>
+                <td>Partners</td>
+                <td style={{ textAlign: "right" }}>$480K</td>
+                <td style={{ textAlign: "right" }}>20%</td>
+              </tr>
+            </tbody>
+          </table>
+          <p style={{ color: "#5b6b7c", fontSize: "12px", marginTop: "12px" }}>
+            Note: user growth lagged plan in APAC; retention held steady at 91%.
+          </p>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<Dashboard />);
+  </script>
+</body>
+</html>
