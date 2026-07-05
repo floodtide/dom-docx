@@ -18,16 +18,6 @@ Latest suite metrics from `npm run test:suite`. **How scores are computed:** [SC
 | Avg compile | — | — | **25.3 ms** |
 | Identity-pair calibration (full 35) | — | — | **mean 97.13% / min 90.46%** |
 
-> **2026-07-03: table layout + flex row width fixes** — flex rows now fill printable width (proportional to intrinsic mins); nested tables inherit parent cell width; borderless tables suppress visible gridlines. `borderless-table` **41.37 → 96.70**, `table-mismatched-cells` **77.65 → 96.12**, `simple-table-2x2` **83.91 → 95.82**, `simple-table-3col` **87.52 → 96.21**, `pre-code-block` **82.44 → 93.25**. Suite visual 92.58 → **95.57**, engine 94.19 → **95.63**; guards 35/35.
->
-> **2026-07-03: two new suite cases** — `pre-code-block` (fenced `<pre><code>` + inline `<code>`) and `borderless-table` (label/value table with `border:none`).
->
-> **2026-07-03: nested blockquote nesting fixed** — `nested-blockquotes-lists` **54.41 → 91.15**. `simple-blockquote` **92.09 → 96.61**.
->
-> **2026-07-03: flex-column gaps + container inset fixed** — `flex-column-vertical` **72.18 → 97.74**.
->
-> **2026-07-02: CSS bar divs in table cells now render** — `table-cell-bar-divs` **59.78 → 98.58**.
-
 **Human-label cross-check** (blind ratings, `internal/research/human-labels.json`): visual means by rating are monotonic. Remaining human-rated weak spots: `flex-row-horizontal` 85.3 (**under-penalized** — cards taller, text wrapped). Fixed since labeling: `table-cell-bar-divs`, `flex-column-vertical`, `nested-blockquotes-lists`. New cases and post-fix `borderless-table` not yet re-labeled.
 
 Tables below use the **layout-based visual** score; misaligned px is the raw pixel tripwire. Diff images: `output/suite/diff_{name}.png`. Full machine-readable output: `output/suite/results.json`.
@@ -95,8 +85,6 @@ Under layout-based scoring these align best with blind human ratings (1 = looks 
 | `pre-code-block` | 93.25% | — | Multiline `<pre>` still imperfect; inline `<code>` OK |
 | `mixed-margins-paddings` | 94.17% | 1 | Minor spacing deltas |
 | `paragraph-with-line-break` | 94.48% | 1 | `<br>` spacing noise |
-
-(Fixed since labeling: `table-cell-bar-divs` 59.78 → 98.67; `flex-column-vertical` 72.18 → 97.74; `nested-blockquotes-lists` 54.41 → 91.15. Fixed 2026-07-03 PM: `borderless-table` 41.37 → 96.70; `table-mismatched-cells` 77.65 → 96.12.)
 
 ---
 

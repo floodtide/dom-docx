@@ -404,27 +404,27 @@ Conversion is a three-stage pipeline: **style resolution → HTML visitor → OO
 HTML fragment
      │
      ▼
-┌─────────────────────────────────────────────────────────────┐
-│ 1. Style resolution (StyleResolver)                         │
-│    inline: parse style="" on each element                   │
-│    computed (Node): getComputedStyle via Playwright/Chromium  │
-│    computed (browser): getComputedStyle on live document.body │
-└─────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────┐
+│ 1. Style resolution (StyleResolver)                            │
+│    inline: parse style="" on each element                      │
+│    computed (Node): getComputedStyle via Playwright/Chromium   │
+│    computed (browser): getComputedStyle on live document.body  │
+└────────────────────────────────────────────────────────────────┘
      │
      ▼
-┌─────────────────────────────────────────────────────────────┐
-│ 2. Visitor (cheerio → docx objects)                         │
-│    Walk body children; map blocks to Paragraph / Table        │
-│    Inline nodes → TextRun, Hyperlink, list numbering        │
-│    Flex divs → borderless tables; shaded divs → table wrap  │
-└─────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────┐
+│ 2. Visitor (cheerio → docx objects)                            │
+│    Walk body children; map blocks to Paragraph / Table         │
+│    Inline nodes → TextRun, Hyperlink, list numbering           │
+│    Flex divs → borderless tables; shaded divs → table wrap     │
+└────────────────────────────────────────────────────────────────┘
      │
      ▼
-┌─────────────────────────────────────────────────────────────┐
-│ 3. Pack + post-process                                      │
-│    docx Packer → unzip → patch document.xml / numbering.xml │
-│    → re-zip → Buffer (Node) or Blob (browser)               │
-└─────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────┐
+│ 3. Pack + post-process                                         │
+│    docx Packer → unzip → patch document.xml / numbering.xml    │
+│    → re-zip → Buffer (Node) or Blob (browser)                  │
+└────────────────────────────────────────────────────────────────┘
 ```
 
 ### Visitor mapping
