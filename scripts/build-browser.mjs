@@ -35,4 +35,4 @@ await copyFile(
   path.join(root, "dist/browser.d.ts"),
 );
 
-console.log("browser bundle → dist/browser/dom-docx.browser.js");
+console.error("browser bundle → dist/browser/dom-docx.browser.js");

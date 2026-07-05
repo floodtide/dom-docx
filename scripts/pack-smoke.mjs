@@ -10,7 +10,15 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const packOut = execSync("npm pack --silent", { cwd: root, encoding: "utf-8" }).trim();
+const packLines = execSync("npm pack --silent", { cwd: root, encoding: "utf-8" })
+  .trim()
+  .split("\n")
+  .map((line) => line.trim())
+  .filter(Boolean);
+const packOut = packLines.find((line) => line.endsWith(".tgz"));
+if (!packOut) {
+  throw new Error(`npm pack did not print a .tgz filename (got: ${packLines.join(" | ")})`);
+}
 const tgz = path.join(root, packOut);
 
 const work = mkdtempSync(path.join(tmpdir(), "dom-docx-smoke-"));
@@ -42,6 +50,27 @@ try {
     );
   }
 
+  const domDocxRoot = path.join(nm, "dom-docx");
+  for (const rel of [
+    "dist/browser.js",
+    "dist/browser.d.ts",
+    "dist/browser/dom-docx.browser.js",
+  ]) {
+    try {
+      readFileSync(path.join(domDocxRoot, rel));
+    } catch {
+      throw new Error(`browser entry missing from tarball: ${rel}`);
+    }
+  }
+
+  const browserExport = pkg.exports?.["./browser"];
+  if (browserExport?.import !== "./dist/browser.js") {
+    throw new Error('exports["./browser"].import must point at ./dist/browser.js');
+  }
+  if (browserExport?.default !== "./dist/browser.js") {
+    throw new Error('exports["./browser"].default must point at ./dist/browser.js');
+  }
+
   const smoke = `
     import { convertHtmlToDocx } from 'dom-docx';
     import { writeFileSync } from 'fs';
@@ -62,7 +91,17 @@ try {
   const cliOut = readFileSync(path.join(work, "cli-out.docx"));
   if (cliOut[0] !== 0x50 || cliOut[1] !== 0x4b) throw new Error("CLI output is not a zip/docx");
 
-  console.log("pack-smoke: passed (library + CLI)");
+  const browserSmoke = `
+    import { convertHtmlToDocx } from 'dom-docx/browser';
+    const blob = await convertHtmlToDocx('<p>browser entry</p>', { styleSource: 'inline' });
+    const buf = Buffer.from(await blob.arrayBuffer());
+    if (buf[0] !== 0x50 || buf[1] !== 0x4b) throw new Error('browser entry: not a zip/docx');
+    console.log('browser entry ok:', buf.length, 'bytes');
+  `;
+  writeFileSync(path.join(work, "browser-smoke.mjs"), browserSmoke);
+  execSync("node browser-smoke.mjs", { cwd: work, stdio: "inherit" });
+
+  console.log("pack-smoke: passed (library + CLI + browser entry)");
 } finally {
   rmSync(work, { recursive: true, force: true });
   rmSync(tgz, { force: true });

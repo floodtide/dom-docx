@@ -45,8 +45,9 @@
     },
     "./browser": {
       "types": "./dist/browser.d.ts",
+      "import": "./dist/browser.js",
       "browser": "./dist/browser/dom-docx.browser.js",
-      "default": "./dist/browser/dom-docx.browser.js"
+      "default": "./dist/browser.js"
     }
   },
   "bin": {
@@ -55,7 +56,7 @@
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.build.json && cp src/converter/computed-style-snapshot.browser.js dist/converter/",
     "build:all": "npm run build && npm run build:browser",
-    "prepack": "npm run build",
+    "prepack": "npm run build:all",
     "build:browser": "node scripts/build-browser.mjs",
     "test:suite": "tsx tools/validator.ts",
     "test:suite:priority": "tsx tools/validator.ts --priority",
