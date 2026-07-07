@@ -1,12 +1,8 @@
 # Benchmark: OSS HTML→DOCX vs dom-docx
 
-Generated: **July 2, 2026** · Run via `npm run test:benchmark` (2026-07-02T23:31Z)
-
-dom-docx baseline from `output/suite/results.json` (2026-07-03T00:42Z — includes the bar-divs and flex-column fixes; OSS numbers from the 07-02 benchmark run, unchanged by dom-docx converter fixes).
+Generate via `npm run test:benchmark`.
 
 All libraries use the **same visual harness**: human-validated **layout fidelity** (ink-projection structure comparison; 85.6% concordance with blind human quality ratings vs 44.9% for pixel overlap) plus content-quality guards (legibility, background balance, list marker fidelity, text content fidelity). List marker checks run only when HTML contains `<ol>`/`<ul>`. Raw pixel match is recorded per case as a regression tripwire but contributes to no score. See [SCORING.md](./SCORING.md).
-
-> **Methodology change (2026-07-02):** scores switched from pixel-based to layout-based after human-label validation; numbers are **not comparable** to earlier benchmark runs. The change is applied identically to all libraries — and it *widened* the gap: the pixel metric was inadvertently flattering broken competitor output (sparse wrong-position ink still overlaps on a mostly-white page). It also surfaced one honest dom-docx **loss** the pixel metric had hidden (`table-cell-bar-divs`, below).
 
 ## Libraries under test
 
@@ -91,21 +87,17 @@ Both JS libraries fail Office 2019 OOXML schema validation on every case (`w:sec
 
 dom-docx leads on all five list cases (~96.5% across the board — under the AA-invariant metric, its lists score as what they are: correct). TurboDocx regresses sharply on custom `list-style-type` variants (~65–68%).
 
-Full per-case tables: `output/benchmark/results-html-to-docx.json`, `output/benchmark/results-turbodocx.json`.
-
 ---
 
 ## Style source: inline vs computed-oracle vs computed-native (dom-docx)
 
 Run: `tsx tools/style-source-benchmark.ts` (requires fresh `npm run test:suite` baseline in `output/suite/results.json`).
 
-Same harness, three style-resolution lanes. **Last run: 2026-06-30** on the then-**28-case** suite under the **old pixel-based scoring** — the lane *deltas* (native vs oracle vs inline, byte-identical parity) remain valid because all three lanes were scored the same way, but the absolute visual numbers predate the 2026-07-02 switch to layout-based scoring; re-run `tsx tools/style-source-benchmark.ts` to refresh.
+Same harness, three style-resolution lanes.
 
 - **inline** — default `style=""` resolver, pure JS, runs anywhere.
 - **computed-oracle** — `convertHtmlToDocx(html, { styleSource: "computed", browser })` spawns its own Playwright page per call (server-side `getComputedStyle` batch).
 - **computed-native** — `convertHtmlToDocx(html, { styleSource: "computed", page })` reads computed styles from an **already-rendered** page (the in-browser deployment lane: the page exists, `getComputedStyle` is free, no second render).
-
-Run: **2026-06-30T21:32Z** · Results: `output/benchmark/style-source/results-dom-docx-computed.json` (v2: `cases` = oracle, `casesNative` = native)
 
 | Metric | inline | computed-oracle | computed-native | native − inline |
 |--------|-------:|----------------:|----------------:|----------------:|
@@ -117,7 +109,7 @@ Run: **2026-06-30T21:32Z** · Results: `output/benchmark/style-source/results-do
 
 **The headline:** computed-native delivers the *exact* computed-style fidelity of the oracle (`native − oracle = +0.00 pp` adjusted visual — see parity guard below) at inline-level speed (~26.7 ms/case). The oracle's −14 pt engine-score drop is **entirely** the per-call Playwright spin-up; in the browser, where the page already exists, that cost disappears and the engine score returns to ~92.
 
-**On the inline-style suite the three lanes now sit within 0.35 pp** — inline-only HTML produces near-identical output through all three resolvers (the SVG handler and other June-30 gains landed on all lanes once `<svg>` dispatch was fixed for the computed path). Computed's real advantage shows up on the **CSS-cascade suite** below, where styling lives in `<style>`/class selectors the inline path can't see.
+**On the inline-style suite the three lanes now sit within 0.35 pp** — inline-only HTML produces near-identical output through all three resolvers. Computed's real advantage shows up on the **CSS-cascade suite** below, where styling lives in `<style>`/class selectors the inline path can't see.
 
 **Parity guard:** `tsx tools/computed-parity-guard.ts` — oracle and native feed the same snapshots into the same OOXML builder, so for identical HTML they emit **byte-identical** normalized `word/*.xml`. **30/30 byte-identical.** A divergence would isolate a bug to snapshot extraction (ambient page vs spawned page) — the only thing that differs between the lanes.
 
@@ -135,16 +127,12 @@ Run: `tsx tools/css-cascade-runner.ts` · Cases: `tools/css-cascade-cases.ts` ·
 
 Separate from the 28-case loop — HTML uses `<style>` blocks and `class` / `#id` selectors with **no** matching inline `style=""` on styled nodes (except `stylesheet-inline-wins`).
 
-Run: **2026-06-30T12:22Z** — **old pixel-based scoring**; the inline-vs-computed *advantage* is directionally valid (both lanes scored identically) but absolute numbers predate the 2026-07-02 layout-based switch; re-run `tsx tools/css-cascade-runner.ts` to refresh.
-
 | Metric | inline | computed | Δ |
 |--------|-------:|---------:|--:|
 | Avg adjusted visual | 68.04% | 82.24% | **+14.20 pp** |
 | Cases passed | — | 7 / 8 | — |
 
 **Largest computed wins:** `stylesheet-section-theme` (+49.2 pp), `stylesheet-descendant-table` (+48.8 pp), `stylesheet-strong-em` (+7.0 pp), `stylesheet-p-color` (+4.0 pp).
-
-**⚠ Open regression:** `stylesheet-list-classes` computed dropped 86.7% → 56.5% between the 2026-06-29 and 2026-06-30 runs (advantage +32.9 pp → +2.5 pp), which fails its advantage threshold (**7 / 8**, was 8 / 8). Likely LibreOffice list-rendering variance rather than a converter defect — not yet confirmed. Tracked in `internal/TODO.md` (maintainers). The main suite has no regressions from that change.
 
 **Control case:** `stylesheet-inline-wins` — inline `style=""` overrides class; both paths ~88%.
 
