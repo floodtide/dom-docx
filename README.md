@@ -4,7 +4,7 @@ Convert semantic **HTML fragments** to native, editable **Word documents** (OOXM
 
 **Live demo:** [dom-docx.com](https://dom-docx.com/). Try the converter, browse showcases, read the learn guide.
 
-Built with a visual regression loop: render HTML in Chromium, convert, rasterize via LibreOffice, score layout + structural fidelity against a human-validated metric, iterate. Latest scores: [TEST-SCORES.md](./docs/TEST-SCORES.md) · methodology: [SCORING.md](./docs/SCORING.md).
+Built with a visual regression loop: render HTML in Chromium, convert to docx, rasterize via LibreOffice, score layout + structural fidelity against a human-validated metric, iterate. Latest scores: [TEST-SCORES.md](./docs/TEST-SCORES.md) · methodology: [SCORING.md](./docs/SCORING.md).
 
 ## Install
 
@@ -110,7 +110,7 @@ Pass a **body fragment only** (no `<!DOCTYPE>` / `<html>` / `<body>` required). 
 - **Browser bundle:** uses the **live DOM** in the user's tab. No Playwright, no extra install
 - **Inline is the supported default** for npm installs; computed is for stylesheets/classes or when you already have a rendered page
 
-**Not supported in v0.1.0:**
+**Not supported in v0.1.x:**
 
 - External stylesheets on the inline path (use computed or inline all styles)
 - Web fonts, CSS grid/float layout, forms, `<pre>` polish, `<dl>`, table `rowspan`
@@ -216,7 +216,7 @@ dom-docx maps a practical HTML subset to native OOXML through a three-stage pipe
 
 Quality is driven by an autonomous loop rather than one-off visual checks:
 
-- **30+ regression cases** (defined in [`tools/generator.ts`](./tools/generator.ts), run via `npm run test:suite`): human-validated **layout fidelity** (ink-projection structure comparison, 85.6% concordance with blind human quality ratings), plus guards for bad contrast, missing list markers, wrong text and imbalanced shaded blocks; raw pixel match is recorded as a regression tripwire
+- **30+ regression cases** (defined in [`tools/generator.ts`](./tools/generator.ts), run via `npm run test:suite`): human-validated **layout fidelity**, plus guards for bad contrast, missing list markers, wrong text and imbalanced shaded blocks; raw pixel match is recorded as a regression tripwire
 - **Engine score**: 50% visual (layout-based) + 35% editability (native structure, not 1×1 layout tables) + 15% compile speed
 - **OSS benchmark**: same harness scores [html-to-docx](https://www.npmjs.com/package/html-to-docx) and [@turbodocx/html-to-docx](https://www.npmjs.com/package/@turbodocx/html-to-docx) for ongoing comparison ([BENCHMARK.md](./docs/BENCHMARK.md))
 
