@@ -30,8 +30,8 @@ npm run typecheck
 npm run build          # dist/ for npm pack
 npm run test:inline-guard   # fast: inline path unchanged
 npm run test:config         # ConvertOptions OOXML checks
-npm run test:suite           # full 33-case visual regression (needs LO + Chromium)
-npm run test:suite:priority  # 10-case subset
+npm run test:suite           # full visual regression suite (cases: tools/generator.ts; needs LO + Chromium)
+npm run test:suite:priority  # fast subset of the same cases
 npm run test:benchmark      # vs html-to-docx + TurboDocx
 npm run test:showcase       # refresh examples/
 npm run test:pack-smoke     # verify npm tarball installs without Playwright
@@ -42,7 +42,7 @@ Benchmark sub-commands use npm args (no separate scripts):
 ```bash
 npm run test:benchmark -- turbodocx
 npm run test:benchmark -- html-to-docx
-npm run test:calibration -- --full   # all 33 cases (default is 10-case priority set)
+npm run test:calibration -- --full   # all cases (default is the priority subset)
 ```
 
 ## Maintainer-only harness commands

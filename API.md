@@ -532,8 +532,8 @@ These exercise the API and write artifacts under `output/`:
 
 | Command | What it runs |
 |---------|----------------|
-| `npm run test:suite` | Full 35-case visual + XML regression suite (needs Chromium + LibreOffice) |
-| `npm run test:suite:priority` | 10-case fast subset |
+| `npm run test:suite` | Full visual + XML regression suite (cases: `tools/generator.ts`; needs Chromium + LibreOffice) |
+| `npm run test:suite:priority` | Fast subset of the same cases |
 | `npm run test:inline-guard` | Asserts inline path OOXML equivalence (normalized XML) |
 | `npm run test:config` | `ConvertOptions` OOXML checks |
 | `npm run test:benchmark` | OSS html-to-docx / TurboDocx comparison |
