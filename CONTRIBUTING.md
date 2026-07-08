@@ -30,8 +30,9 @@ npm run typecheck
 npm run build          # dist/ for npm pack
 npm run test:inline-guard   # fast: inline path unchanged
 npm run test:config         # ConvertOptions OOXML checks
-npm run test:suite           # full 33-case visual regression (needs LO + Chromium)
+npm run test:suite           # full 36-case visual regression (needs LO + Chromium)
 npm run test:suite:priority  # 10-case subset
+# Run one case: SUITE_ONLY=rasterize-in-place-chart npm run test:suite
 npm run test:benchmark      # vs html-to-docx + TurboDocx
 npm run test:showcase       # refresh examples/
 npm run test:pack-smoke     # verify npm tarball installs without Playwright

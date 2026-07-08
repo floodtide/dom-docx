@@ -54,7 +54,7 @@
     "dom-docx": "dist/cli.js"
   },
   "scripts": {
-    "build": "rm -rf dist && tsc -p tsconfig.build.json && cp src/converter/computed-style-snapshot.browser.js dist/converter/",
+    "build": "rm -rf dist && tsc -p tsconfig.build.json && cp src/converter/computed-style-snapshot.browser.js src/converter/rasterize-export-prep.browser.js dist/converter/",
     "build:all": "npm run build && npm run build:browser",
     "prepack": "npm run build:all",
     "build:browser": "node scripts/build-browser.mjs",

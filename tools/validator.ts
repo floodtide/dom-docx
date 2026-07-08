@@ -8,6 +8,7 @@ import { convertHtmlToDocx } from "../src/converter.js";
 import { VIEWPORT_HEIGHT_PX, VIEWPORT_WIDTH_PX, PAGE_MARGIN_PX } from "../src/converter/constants.js";
 import {
   generateTestCases,
+  resolveHarnessConvertOptions,
   resolveLoopTestCases,
   type LoopCaseMode,
   type TestCase,
@@ -32,6 +33,7 @@ import { SUITE_OUTPUT } from "./output-paths.js";
 const OUTPUT_DIR = SUITE_OUTPUT;
 const STRICT_VISUAL = process.argv.includes("--strict-visual");
 const LOOP_MODE: LoopCaseMode = process.argv.includes("--priority") ? "priority" : "full";
+const SUITE_ONLY = process.env.SUITE_ONLY?.split(",").map((s) => s.trim()).filter(Boolean);
 const RESULTS_JSON = path.join(
   OUTPUT_DIR,
   LOOP_MODE === "priority" ? "results-priority.json" : "results.json",
@@ -166,7 +168,10 @@ async function runCase(testCase: TestCase, browser: Browser): Promise<CaseResult
     const htmlDisplayText = await captureHtmlPng(browser, testCase.html, targetPng);
 
     const compileStart = performance.now();
-    const docxBuffer = await convertHtmlToDocx(testCase.html);
+    const harnessOpts = resolveHarnessConvertOptions(testCase, browser);
+    const docxBuffer = harnessOpts
+      ? await convertHtmlToDocx(testCase.html, harnessOpts)
+      : await convertHtmlToDocx(testCase.html);
     result.compileMs = performance.now() - compileStart;
     result.performanceScore = performanceScore(result.compileMs);
 
@@ -438,7 +443,13 @@ async function writeResultsJson(
 async function main(): Promise<void> {
   await mkdir(OUTPUT_DIR, { recursive: true });
   const totalCaseCount = generateTestCases().length;
-  const cases = resolveLoopTestCases(LOOP_MODE);
+  let cases = resolveLoopTestCases(LOOP_MODE);
+  if (SUITE_ONLY?.length) {
+    cases = cases.filter((c) => SUITE_ONLY.includes(c.name));
+    if (cases.length === 0) {
+      throw new Error(`SUITE_ONLY matched no cases: ${SUITE_ONLY.join(", ")}`);
+    }
+  }
   console.log(
     `Running ${cases.length}/${totalCaseCount} test cases (${LOOP_MODE}) → ${OUTPUT_DIR}`,
   );

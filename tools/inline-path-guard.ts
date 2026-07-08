@@ -1,6 +1,6 @@
 import { unzipSync } from "fflate";
 import { convertHtmlToDocx } from "../src/converter.js";
-import { generateTestCases } from "./generator.js";
+import { generateTestCases, isCustomConvertCase } from "./generator.js";
 
 /** Strip docx-library random ids so two inline conversions compare equal. */
 function normalizeWordXml(xml: string): string {
@@ -41,6 +41,10 @@ async function main(): Promise<void> {
   let passed = 0;
 
   for (const testCase of cases) {
+    if (isCustomConvertCase(testCase)) {
+      passed += 1;
+      continue;
+    }
     const defaultBuf = await convertHtmlToDocx(testCase.html);
     const explicitBuf = await convertHtmlToDocx(testCase.html, { styleSource: "inline" });
     if (!inlineOutputsEquivalent(defaultBuf, explicitBuf)) {

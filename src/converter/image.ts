@@ -155,6 +155,13 @@ function attrPx(value: string | undefined): number | undefined {
   return Number.isFinite(n) && n > 0 ? n : undefined;
 }
 
+/** docx assigns docPr id=1 per ImageRun unless overridden — reset per document build. */
+let nextImageDocPrId = 1;
+
+export function resetImageDocPrIds(): void {
+  nextImageDocPrId = 1;
+}
+
 /**
  * Build a docx `ImageRun` from an `<img>` element. Supports base64 `data:` raster
  * URLs (png/jpg/gif/bmp). Display size comes from `width`/`height` attributes,
@@ -179,12 +186,14 @@ export function imageRunFromElement(element: Element): ImageRun | null {
     height = natural?.h ?? 150;
   }
 
+  const docPrId = String(nextImageDocPrId++);
+  const alt = element.attribs?.alt;
   return new ImageRun({
     type: decoded.type,
     data: decoded.data,
     transformation: { width: width!, height: height! },
-    altText: element.attribs?.alt
-      ? { title: element.attribs.alt, description: element.attribs.alt, name: element.attribs.alt }
-      : undefined,
+    altText: alt
+      ? { id: docPrId, title: alt, description: alt, name: alt }
+      : { id: docPrId, name: "Image" },
   });
 }

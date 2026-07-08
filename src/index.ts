@@ -24,4 +24,8 @@ export {
   snapshotComputedStyles,
   createComputedStyleResolver,
   computedStyleResolverFromPage,
+  preparePlaywrightRasterizedExport,
+  openPlaywrightPage,
 } from "./converter/style-resolver-node.js";
+export type { PlaywrightPreparedExport } from "./converter/style-resolver-node.js";
+export type { RasterizeInPlaceOptions } from "./converter/rasterize-subtree.browser.js";

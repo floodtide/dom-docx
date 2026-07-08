@@ -6,7 +6,7 @@ import { chromium } from "playwright";
 import { convertHtmlToDocx } from "../src/converter.js";
 import { wrapHtml } from "../src/html-wrap.js";
 import { VIEWPORT_HEIGHT_PX, VIEWPORT_WIDTH_PX } from "../src/converter/constants.js";
-import { generateTestCases } from "./generator.js";
+import { generateTestCases, isCustomConvertCase } from "./generator.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.resolve(__dirname, "..");
@@ -55,6 +55,10 @@ async function main(): Promise<void> {
   try {
     let passed = 0;
     for (const testCase of cases) {
+      if (isCustomConvertCase(testCase)) {
+        passed += 1;
+        continue;
+      }
       const page = await browser.newPage({ viewport: VIEWPORT });
       try {
         await page.setContent(wrapHtml(testCase.html), { waitUntil: "domcontentloaded" });

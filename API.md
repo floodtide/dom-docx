@@ -40,6 +40,8 @@ The default install is pure JS (`docx`, `cheerio`, `fflate`) — **no browser, n
 | Returns | `Promise<Buffer>` | `Promise<Blob>` (or `Uint8Array`) |
 | `styleSource: "inline"` (default) | Pure JS, no browser | Pure JS, no live DOM required |
 | `styleSource: "computed"` | Headless Chromium via **Playwright** (optional peer dep) | Native `getComputedStyle` on the **live page** — Playwright never involved |
+| `rasterizeInPlace` | Same Playwright page as computed (or spawn one) | Live DOM — requires `root`; clones off-screen by default |
+| Fragment export (`root` / `rootSelector`) | `rootSelector` + optional live `page` | `root` (live `Element`) |
 | Typical use | Server-side batch conversion, agents with inline HTML | In-app "Export to Word" from rendered React/Vue/etc. |
 
 ---
@@ -60,14 +62,17 @@ function convertHtmlToDocx(
 | `html` | `string` | Body fragment (trimmed and wrapped in `<body>…</body>` internally). |
 | `options` | `ConvertOptions` | Optional. See [Options](#options-convertoptions). Defaults to inline style resolution. |
 
-**Behavior by `styleSource`:**
+**Behavior by `styleSource` and `rasterizeInPlace`:**
 
-| `styleSource` | Playwright needed? | What happens |
-|---------------|--------------------|--------------|
-| `"inline"` (default) | No | Parses `style=""` attributes only. Fast (~15–30 ms typical). |
-| `"computed"` | **Yes** | Renders the fragment in headless Chromium, snapshots `getComputedStyle` for every element, then converts. Install once: `npm install playwright && npx playwright install chromium`. Slower (~100–500 ms+ depending on launch/reuse). |
+| Path | Playwright needed? | What happens |
+|------|--------------------|--------------|
+| `"inline"` (default), no rasterize | No | Parses `style=""` attributes only. Fast (~15–30 ms typical). |
+| `"computed"` | **Yes** | Renders the fragment in headless Chromium, snapshots `getComputedStyle` for every element, then converts. |
+| `rasterizeInPlace` (any `styleSource`) | **Yes** | Loads or reuses a Chromium page, rasterizes `<canvas>` / complex `<svg>` to PNG `<img>`, then converts. Can be combined with `"computed"`. |
 
-When `styleSource: "computed"` and neither `page` nor `browser` is provided, the function launches Chromium, snapshots styles, converts, and **closes the browser** in a `finally` block. Pass `browser` or `page` to avoid the per-call launch cost (see [Usage patterns](#usage-patterns)).
+Install Playwright once for computed or rasterize paths: `npm install playwright && npx playwright install chromium`.
+
+When Playwright is needed and neither `page` nor `browser` is provided, the function launches Chromium, converts, and **closes the browser** in a `finally` block. Pass `browser` or `page` to avoid the per-call launch cost (see [Usage patterns](#usage-patterns)).
 
 ---
 
@@ -95,23 +100,36 @@ const blob = await convertHtmlToDocx(htmlFragment, { styleSource: "computed" });
 interface BrowserConvertOptions extends DocumentConfig {
   styleSource?: "inline" | "computed";  // default "inline"
   document?: Document;                  // computed only; defaults to the host page's document
+  root?: Element;                       // export root for computed + rasterize (SPA pattern)
+  rasterizeInPlace?: boolean | RasterizeInPlaceOptions;
   imageResolver?: ImageResolver;
+}
+
+interface RasterizeInPlaceOptions {
+  /** Mutate the live `root` instead of cloning. Default false (browser / live page). */
+  mutate?: boolean;
+  /** Extra selectors to rasterize, e.g. [".highcharts-container"]. */
+  selectors?: string[];
 }
 ```
 
 | `styleSource` | Live DOM required? | Behavior |
 |---------------|--------------------|----------|
-| `"inline"` (default) | No | Parses `style=""` only — works on a string fragment with no rendered page. |
-| `"computed"` | **Yes** | Batch-reads native `getComputedStyle` from `document.body` (or `options.document`). The page must already render the same fragment — the converter does not inject HTML for you. |
+| `"inline"` (default) | No* | Parses `style=""` only — works on a string fragment with no rendered page. |
+| `"computed"` | **Yes** | Batch-reads native `getComputedStyle` from `options.root` or `document.body`. The page must already render the same fragment. |
 
-All [document options](#options-convertoptions) (`pageSize`, `margins`, `metadata`, …) work here too. `browser` / `page` are Node-only.
+\*Unless `rasterizeInPlace` is set — that always requires a live DOM with rendered charts.
 
 | Export | Returns | Notes |
 |--------|---------|-------|
 | `convertHtmlToDocx(html, options?)` | `Promise<Blob>` | Primary browser API |
 | `convertHtmlToDocxUint8Array(html, options?)` | `Promise<Uint8Array>` | Same bytes, no Blob wrapper |
 | `buildDocxBlob` / `buildDocxUint8Array` | | Lower-level, bring your own `StyleResolver` |
-| `snapshotComputedStylesFromDocument(doc?)` | `ComputedStyleSnapshot[]` | Style snapshots from a live `document.body` |
+| `snapshotComputedStylesFromDocument(doc?, root?)` | `ComputedStyleSnapshot[]` | Style snapshots scoped to `root` or `document.body` |
+| `rasterizeInPlace(root, options?)` | `Promise<void>` | Mutates live DOM; prefer `convertHtmlToDocx({ rasterizeInPlace: true })` to clone off-screen |
+| `isSimpleSvgElement(svg)` | `boolean` | True when SVG is simple enough for native rect/text conversion |
+
+All [document options](#options-convertoptions) (`pageSize`, `margins`, `metadata`, …) work here too. `browser`, `page`, and `rootSelector` are Node-only.
 
 ---
 
@@ -120,8 +138,10 @@ All [document options](#options-convertoptions) (`pageSize`, `margins`, `metadat
 ```typescript
 interface ConvertOptions extends DocumentConfig {
   styleSource?: "inline" | "computed";  // default "inline"
-  browser?: Browser;                    // Node computed only (Playwright)
-  page?: Page;                          // Node computed only (Playwright)
+  browser?: Browser;                    // Node — reuse Playwright browser
+  page?: Page;                          // Node — reuse Playwright page (computed / rasterize)
+  rootSelector?: string;                // Node — export root when converting element.innerHTML from a live page
+  rasterizeInPlace?: boolean | RasterizeInPlaceOptions;
   imageResolver?: ImageResolver;
 }
 
@@ -158,8 +178,10 @@ interface DocumentConfig {
 | `lang` | `string` | — | Document spell-check locale (`w:lang`), e.g. `"en-US"`. |
 | `direction` | `"ltr" \| "rtl"` | `"ltr"` | `"rtl"` sets right-to-left runs (`w:rtl`) — e.g. Arabic/Hebrew. |
 | `imageResolver` | `ImageResolver` | — | Resolve non-`data:` `<img src>`. See [Images](#images--the-resolver-hook). |
-| `browser` | Playwright `Browser` | — | **Node computed only.** Reuse an already-launched browser across many conversions. |
-| `page` | Playwright `Page` | — | **Node computed only.** Snapshot styles from a page you already rendered. For in-browser apps use `dom-docx/browser` instead. |
+| `browser` | Playwright `Browser` | — | **Node only.** Reuse an already-launched browser across many conversions. |
+| `page` | Playwright `Page` | — | **Node only.** Snapshot styles and/or rasterize from a page you already rendered. |
+| `rootSelector` | `string` | — | **Node only.** CSS selector for the export root when passing `element.innerHTML` from a live `page`. Must match the node whose HTML you convert. |
+| `rasterizeInPlace` | `boolean \| RasterizeInPlaceOptions` | — | Rasterize `<canvas>` and complex `<svg>` (e.g. Highcharts) to PNG `<img>` before conversion. Uses Playwright on Node. See [Charts & rasterizeInPlace](#charts--rasterizeinplace). |
 
 ```typescript
 const docx = await convertHtmlToDocx(html, {
@@ -173,11 +195,15 @@ const docx = await convertHtmlToDocx(html, {
 });
 ```
 
-**Resolution order for `styleSource: "computed"` (Node):**
+**Resolution order for Playwright paths (Node):**
 
-1. If `options.page` is set → snapshot that page (no new page)
-2. Else if `options.browser` is set → new page per call, browser kept open
-3. Else → launch Chromium, convert, close browser
+1. If `options.page` is set → use that page (no `setContent`)
+2. Else if `options.browser` is set → new page per call, `setContent(html)`, browser kept open
+3. Else → launch Chromium, `setContent(html)`, convert, close browser
+
+When `rasterizeInPlace` is set, rasterization runs on the Playwright page **before** style resolution and conversion. With a live `page` + `rootSelector`, the export root is cloned off-screen by default (same as browser `root`). Ephemeral spawn pages (no `page`, no `rootSelector`) mutate in place by default.
+
+When `styleSource: "computed"` and you pass `rootSelector`, computed-style snapshots are scoped to that element so paths match `element.innerHTML` (SPA fragment export).
 
 ---
 
@@ -297,6 +323,80 @@ const docx = await convertHtmlToDocx(html, {
 
 Styles come from the **same DOM** as a reference screenshot—no second render.
 
+### SPA fragment export (browser)
+
+When exporting a subtree from a live Vue/React app, pass the **same element** as both the HTML source and the computed-style root:
+
+```typescript
+import { convertHtmlToDocx } from "dom-docx/browser";
+
+async function exportSection(root: HTMLElement) {
+  return convertHtmlToDocx(root.innerHTML, {
+    styleSource: "computed",
+    root, // paths in the style snapshot match the fragment cheerio tree
+  });
+}
+```
+
+Without `root`, computed styles are snapshotted from `document.body` while cheerio parses only the fragment — paths miss and styles fall back to inline attributes only.
+
+### SPA fragment export (Node + live Playwright page)
+
+Same pattern with a CSS selector on an already-rendered page:
+
+```typescript
+const rootSelector = ".page-body";
+const html = await page.$eval(rootSelector, (el) => el.innerHTML);
+
+const docx = await convertHtmlToDocx(html, {
+  styleSource: "computed",
+  page,
+  rootSelector,
+});
+```
+
+### Charts & `rasterizeInPlace`
+
+dom-docx converts simple inline SVG (rect + text bars) natively. Chart libraries (Highcharts, Chart.js canvas, complex SVG paths/gradients) need rasterization to PNG `<img>` first.
+
+**Browser** — requires `root`; clones off-screen by default:
+
+```typescript
+const blob = await convertHtmlToDocx(root.innerHTML, {
+  styleSource: "computed",
+  root,
+  rasterizeInPlace: true,
+  // or: rasterizeInPlace: { selectors: [".highcharts-container"] },
+});
+```
+
+**Node** — uses the same Playwright page as computed styles:
+
+```typescript
+// Ephemeral page (HTML string with rendered chart markup)
+const docx = await convertHtmlToDocx(html, {
+  styleSource: "computed",
+  rasterizeInPlace: true, // mutates the throwaway page in place
+});
+
+// Live Playwright page (e.g. E2E export from a running app)
+const docx2 = await convertHtmlToDocx(fragmentHtml, {
+  styleSource: "computed",
+  page,
+  rootSelector: "#dashboard",
+  rasterizeInPlace: true, // clones off-screen unless { mutate: true }
+});
+```
+
+| Context | Default `mutate` | Why |
+|---------|------------------|-----|
+| Browser / live `page` + `rootSelector` | `false` (clone) | Avoid disturbing the user's SPA |
+| Node spawn (no `page`, no `rootSelector`) | `true` | Ephemeral Chromium tab — safe to mutate |
+
+Pass `{ mutate: true }` to replace charts in the caller's live DOM (browser or Playwright page).
+
+Lower-level Node helpers: `preparePlaywrightRasterizedExport(page, rootSelector?, options?, mutate?)`, `openPlaywrightPage(html, browser)`.
+
 ---
 
 ## Supported HTML & CSS
@@ -336,7 +436,7 @@ See [AGENTS.md](./AGENTS.md) for the full tier list. In short:
 
 - **Excellent:** headings, paragraphs, lists, simple tables, inline formatting, short span highlights, blockquotes, `<hr>`.
 - **Good:** shaded div banners, flex rows (≤4 items), table row/cell backgrounds, bordered boxes, `data:` images.
-- **Avoid:** complex SVG, CSS grid/float/absolute layout, external stylesheets (inline path), forms, deep layout div nesting.
+- **Avoid:** complex SVG, CSS grid/float/absolute layout, external stylesheets (inline path), forms, deep layout div nesting. Chart libraries may work with [`rasterizeInPlace`](#charts--rasterizeinplace) on a live page.
 
 ### Input contract
 
@@ -388,9 +488,13 @@ Built-in resolvers and helpers (exported from `dom-docx`):
 | `INLINE_STYLE_RESOLVER` | Singleton inline resolver — parses each element's `style=""` attribute. No stylesheets, no class selectors. |
 | `ComputedStyleResolver` | Computed resolver built from a snapshot array; looks up elements by stable DOM path. Construct via `ComputedStyleResolver.fromSnapshots(snapshots)`. |
 | `createComputedStyleResolver(html, browser)` | Node: renders the fragment in a new Playwright page, snapshots styles, closes the page. |
-| `computedStyleResolverFromPage(page)` | Node: snapshot an existing Playwright page (same DOM as a reference screenshot). |
-| `snapshotComputedStyles(page)` | Node: raw `{ path, styles }[]` snapshots from a Playwright page. |
-| `snapshotComputedStylesFromDocument(doc?)` | Browser (`dom-docx/browser`): same snapshots from a live `document`. |
+| `computedStyleResolverFromPage(page, rootSelector?)` | Node: snapshot an existing Playwright page, optionally scoped to `rootSelector`. |
+| `snapshotComputedStyles(page, rootSelector?)` | Node: raw `{ path, styles }[]` snapshots from a Playwright page. |
+| `preparePlaywrightRasterizedExport(page, rootSelector?, options?, mutate?)` | Node: rasterize charts on a Playwright page; returns `{ html, snapshotRootSelector, cleanupSelector }`. |
+| `openPlaywrightPage(html, browser)` | Node: `setContent` wrapper with harness viewport defaults. |
+| `snapshotComputedStylesFromDocument(doc?, root?)` | Browser (`dom-docx/browser`): same snapshots from a live `document`, scoped to `root` or `document.body`. |
+| `rasterizeInPlace(root, options?)` | Browser: mutate live DOM to replace charts with PNG `<img>`. |
+| `isSimpleSvgElement(svg)` | Browser: true when SVG converts natively without rasterization. |
 
 **Computed style properties captured** (via `getComputedStyle`): `color`, `backgroundColor`, `display`, `flexDirection`, `gap` / `columnGap` / `rowGap`, `textAlign`, `fontSize`, `fontWeight`, `fontStyle`, margin and padding sides, per-side border width/color. UA defaults on headings are partially stripped when the element has no inline override, so the computed path stays aligned with the inline path for bare `<h1>`–`<h6>`.
 
@@ -405,10 +509,16 @@ HTML fragment
      │
      ▼
 ┌────────────────────────────────────────────────────────────────┐
+│ 0. Optional rasterize (rasterizeInPlace)                       │
+│    canvas / complex SVG → PNG <img> in browser or Playwright   │
+└────────────────────────────────────────────────────────────────┘
+     │
+     ▼
+┌────────────────────────────────────────────────────────────────┐
 │ 1. Style resolution (StyleResolver)                            │
 │    inline: parse style="" on each element                      │
 │    computed (Node): getComputedStyle via Playwright/Chromium   │
-│    computed (browser): getComputedStyle on live document.body  │
+│    computed (browser): getComputedStyle on live root / body    │
 └────────────────────────────────────────────────────────────────┘
      │
      ▼
@@ -440,7 +550,7 @@ HTML fragment
 | `blockquote` | Indented paragraph with left border |
 | `a` | Hyperlink runs |
 | `img` | Embedded `ImageRun` (`data:` URLs, or via `imageResolver`) |
-| `svg` (low-complexity) | Native DOCX blocks — `<rect>` bands + `<text>` (bar/funnel charts) |
+| `svg` (low-complexity) | Native DOCX blocks — `<rect>` bands + `<text>` (bar/funnel charts); complex SVG rasterized when `rasterizeInPlace` is set |
 | `strong`, `em`, `span`, `code`, `br` | Inline runs / breaks |
 
 ### OOXML post-processing
@@ -476,8 +586,8 @@ These match the harness wrapper (`wrapHtml()` in `src/html-wrap.ts`) that the co
 |-------------|-------------------|------------------------------|
 | **Node.js ≥ 20** | Required | N/A (runs in the user's browser) |
 | **cheerio, docx, fflate** | Installed as dependencies | Bundled in the IIFE |
-| **playwright** | **Only** for `styleSource: "computed"` (optional peer dependency, installed separately) | **Not used** |
-| **Live DOM** | Not required (computed uses Playwright) | Required only for `styleSource: "computed"` |
+| **playwright** | For `styleSource: "computed"` and/or `rasterizeInPlace` (optional peer dependency, installed separately) | **Not used** |
+| **Live DOM** | Not required for inline path; computed/rasterize use Playwright | Required for computed and `rasterizeInPlace` |
 
 LibreOffice (`soffice`) is **not** required for conversion — only for the visual validation loop in `npm run test:suite`.
 
@@ -499,8 +609,8 @@ Contributors cloning this repo: `npm run setup` (same command, via package scrip
 - **Computed path cost (Node)** — launching Chromium per call is expensive; pass `browser` or `page` in hot loops. In the browser bundle, computed styles are free aside from normal layout.
 - **Stylesheet fidelity** — the computed path improves cascade support, but some patterns (e.g. complex themed sections) still score lower than inline-authored equivalents.
 - **Layout CSS** — CSS grid, floats, and absolute positioning have no OOXML equivalent and are ignored; flex support covers simple row/column cases.
-- **Images** — png/jpg/gif/bmp only; svg `<img>` sources are not rasterized (inline low-complexity `<svg>` elements convert natively).
-- **No JavaScript execution** — the fragment is converted statically; anything rendered client-side must be in the HTML string (or live DOM for the browser computed path).
+- **Images** — png/jpg/gif/bmp only; svg `<img>` sources are not rasterized. Inline low-complexity `<svg>` elements convert natively; complex chart SVG and `<canvas>` can be rasterized with `rasterizeInPlace`.
+- **No JavaScript execution on the inline/spawn path** — static HTML is converted as-is. Client-rendered charts must already be in the DOM (browser computed path, live Playwright `page`, or pre-rendered markup). The spawn path does not run your app's JS bundle unless you load a full page URL in Playwright yourself.
 
 ---
 
@@ -510,7 +620,7 @@ These exercise the API and write artifacts under `output/`:
 
 | Command | What it runs |
 |---------|----------------|
-| `npm run test:suite` | Full 35-case visual + XML regression suite (needs Chromium + LibreOffice) |
+| `npm run test:suite` | Full 36-case visual + XML regression suite (needs Chromium + LibreOffice) |
 | `npm run test:suite:priority` | 10-case fast subset |
 | `npm run test:inline-guard` | Asserts inline path OOXML equivalence (normalized XML) |
 | `npm run test:config` | `ConvertOptions` OOXML checks |

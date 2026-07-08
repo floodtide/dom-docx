@@ -1,8 +1,26 @@
 import { TEST_IMAGE_260x140, TEST_IMAGE_H, TEST_IMAGE_W } from "./test-image.js";
+import type { ConvertOptions } from "../src/converter.js";
 
 export interface TestCase {
   name: string;
   html: string;
+  /** Custom conversion path (e.g. `rasterizeInPlace`). Omitted cases use default inline. */
+  convertOptions?: ConvertOptions;
+}
+
+/** Cases that skip default inline / computed parity guards. */
+export function isCustomConvertCase(testCase: TestCase): boolean {
+  return testCase.convertOptions != null;
+}
+
+export function resolveHarnessConvertOptions(
+  testCase: TestCase,
+  browser: import("playwright").Browser,
+): ConvertOptions | undefined {
+  const opts = testCase.convertOptions;
+  if (!opts) return undefined;
+  const needsBrowser = opts.rasterizeInPlace || opts.styleSource === "computed";
+  return needsBrowser ? { ...opts, browser: opts.browser ?? browser } : opts;
 }
 
 /** Plain, everyday HTML — the validation baseline. */
@@ -313,6 +331,68 @@ const EDGE_TEST_CASES: TestCase[] = [
         <figcaption style="color:#666;font-size:12px">Fig 1. Illustrative activation funnel</figcaption>
       </figure>
     `,
+  },
+  {
+    name: "rasterize-in-place-chart",
+    html: `
+      <p><strong>Monthly active users</strong></p>
+      <figure style="margin:8px 0;text-align:center">
+        <svg width="420" height="160" viewBox="0 0 420 160" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MAU trend line chart">
+          <defs>
+            <linearGradient id="mauAreaFill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#457b9d" stop-opacity="0.35"/>
+              <stop offset="100%" stop-color="#457b9d" stop-opacity="0.02"/>
+            </linearGradient>
+          </defs>
+          <line x1="48" y1="16" x2="48" y2="128" stroke="#ccc" stroke-width="1"/>
+          <line x1="48" y1="128" x2="404" y2="128" stroke="#ccc" stroke-width="1"/>
+          <line x1="48" y1="56" x2="404" y2="56" stroke="#eee" stroke-width="1"/>
+          <line x1="48" y1="92" x2="404" y2="92" stroke="#eee" stroke-width="1"/>
+          <path d="M48,128 L48,104 L108,88 L168,96 L228,72 L288,80 L348,52 L404,44 L404,128 Z" fill="url(#mauAreaFill)"/>
+          <polyline points="48,104 108,88 168,96 228,72 288,80 348,52 404,44" fill="none" stroke="#457b9d" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="108" cy="88" r="4" fill="#457b9d"/>
+          <circle cx="228" cy="72" r="4" fill="#457b9d"/>
+          <circle cx="348" cy="52" r="4" fill="#457b9d"/>
+          <circle cx="404" cy="44" r="4" fill="#457b9d"/>
+          <text x="48" y="148" fill="#666" font-size="11" font-family="Arial">Jan</text>
+          <text x="168" y="148" fill="#666" font-size="11" font-family="Arial">Mar</text>
+          <text x="288" y="148" fill="#666" font-size="11" font-family="Arial">May</text>
+          <text x="384" y="148" fill="#666" font-size="11" font-family="Arial">Jun</text>
+        </svg>
+        <figcaption style="color:#666;font-size:12px">Fig 1. Six-month MAU trend</figcaption>
+      </figure>
+      <p style="margin-top:12px"><strong>Channel mix</strong></p>
+      <canvas id="channelMix" width="420" height="100" aria-label="Channel mix bar chart"></canvas>
+      <script>
+        (function () {
+          var canvas = document.getElementById("channelMix");
+          if (!canvas) return;
+          var ctx = canvas.getContext("2d");
+          if (!ctx) return;
+          var bars = [
+            { label: "Organic", value: 0.42, color: "#457b9d" },
+            { label: "Paid", value: 0.28, color: "#2a9d8f" },
+            { label: "Partner", value: 0.18, color: "#e9c46a" },
+            { label: "Direct", value: 0.12, color: "#e76f51" },
+          ];
+          var x = 0;
+          var w = canvas.width;
+          var h = canvas.height - 18;
+          bars.forEach(function (bar) {
+            var bw = Math.round(bar.value * w);
+            ctx.fillStyle = bar.color;
+            ctx.fillRect(x, h * (1 - bar.value), bw, h * bar.value);
+            ctx.fillStyle = "#666";
+            ctx.font = "11px Arial";
+            ctx.fillText(bar.label, x + 4, canvas.height - 4);
+            x += bw;
+          });
+        })();
+      </script>
+    `,
+    convertOptions: {
+      rasterizeInPlace: true,
+    },
   },
   {
     name: "table-cell-bar-divs",

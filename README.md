@@ -16,12 +16,12 @@ Requires **Node.js ≥ 20**. No browser or Playwright is needed for the default 
 
 ### When is Playwright needed?
 
-| Entry                            | `styleSource: "inline"` | `styleSource: "computed"`                                                          |
-| -------------------------------- | ----------------------- | ---------------------------------------------------------------------------------- |
-| **Node** (`dom-docx`)            | Pure JS — no browser    | **Playwright + Chromium** (optional peer dependency) to render and snapshot styles |
-| **Browser** (`dom-docx/browser`) | Pure JS — no live DOM   | **Live page only** — native `getComputedStyle`; **Playwright not used**            |
+| Entry                            | `styleSource: "inline"` | `styleSource: "computed"` | `rasterizeInPlace` |
+| -------------------------------- | ----------------------- | ------------------------- | ------------------ |
+| **Node** (`dom-docx`)            | Pure JS — no browser    | **Playwright + Chromium** | **Playwright + Chromium** (same headless page) |
+| **Browser** (`dom-docx/browser`) | Pure JS — no live DOM   | **Live page** — native `getComputedStyle` | **Live page** — canvas/SVG → PNG `<img>` in the tab |
 
-On Node, `playwright` is an **optional peer dependency** — `npm install dom-docx` pulls only `docx`, `cheerio`, and `fflate`, nothing heavy. It is loaded lazily only when you pass `styleSource: "computed"`. To use the computed path, install Playwright and Chromium yourself, once:
+On Node, `playwright` is an **optional peer dependency** — `npm install dom-docx` pulls only `docx`, `cheerio`, and `fflate`, nothing heavy. It is loaded lazily when you pass `styleSource: "computed"` or `rasterizeInPlace`. To use those paths, install Playwright and Chromium yourself, once:
 
 ```bash
 npm install playwright
@@ -82,14 +82,22 @@ Pass a **body fragment only** (no `<!DOCTYPE>` / `<html>` / `<body>` required). 
 - Resolves `<style>` blocks and class/`#id` selectors via `getComputedStyle`
 - **Node:** requires **`playwright`** (optional peer dependency, installed separately) + Chromium — the library launches headless Chromium to render the fragment
 - **Browser bundle:** uses the **live DOM** in the user's tab — no Playwright, no extra install
+- **SPA fragment export:** pass `root` (browser) or `rootSelector` (Node + live `page`) when converting `element.innerHTML` so computed-style paths match the fragment tree
 - **Inline is the supported default** for npm installs; computed is for stylesheets/classes or when you already have a rendered page
+
+**Charts & complex SVG (optional `rasterizeInPlace`):**
+
+- Rasterizes `<canvas>` and complex `<svg>` (e.g. Highcharts) to PNG `<img>` before conversion
+- **Browser:** requires `root` — clones off-screen by default so the live page is not mutated
+- **Node:** uses the same Playwright/Chromium context as computed styles; ephemeral spawn pages mutate in place by default
+- Simple inline SVG (rect + text bar charts) still converts natively without rasterization
 
 **Not supported in v0.1.0:**
 
 - External stylesheets on the inline path (use computed, or inline all styles)
 - Web fonts, CSS grid/float layout, forms, `<pre>` polish, `<dl>`, table `rowspan`
 - Header/footer first/even page variants; guaranteed multi-page layout fidelity
-- Complex SVG (paths, gradients, `<use>`)
+- Complex SVG (paths, gradients, `<use>`) unless `rasterizeInPlace` is used on a live rendered page
 
 See [AGENTS.md](./AGENTS.md) for HTML authoring tiers and [API.md](./API.md) for full options.
 
@@ -121,7 +129,9 @@ const docx = await convertHtmlToDocx(html, {
 | Option                      | Default       | Description                                                                                                                                                                                                      |
 | --------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `styleSource`               | `"inline"`    | `"inline"` parses `style=""` only (pure JS, fast). `"computed"` uses `getComputedStyle` — on **Node** this requires Playwright + Chromium; in the **browser bundle** it reads from the live DOM (no Playwright). |
-| `browser` / `page`          | —             | **Node computed only.** Reuse an open Playwright browser or page instead of launching per call. Not used by `dom-docx/browser`.                                                                                  |
+| `browser` / `page`          | —             | **Node only.** Reuse an open Playwright browser or page (computed styles and/or `rasterizeInPlace`). Not used by `dom-docx/browser`.                                                                              |
+| `rootSelector`              | —             | **Node only.** CSS selector for the export root when converting `element.innerHTML` from a live Playwright `page`. Must match the node whose HTML you pass.                                                        |
+| `rasterizeInPlace`          | —             | Rasterize `<canvas>` / chart `<svg>` to PNG `<img>` before conversion. **Node:** Playwright page; **browser:** requires `root`. See [API.md](./API.md#charts--rasterizeinplace).                               |
 | `imageResolver`             | —             | Hook to fetch non-`data:` `<img src>` (library never fetches on its own).                                                                                                                                        |
 | `pageSize`                  | `"letter"`    | `"letter"`, `"a4"`, or `{ width, height }` in inches.                                                                                                                                                            |
 | `orientation`               | `"portrait"`  | `"landscape"` swaps dimensions.                                                                                                                                                                                  |
@@ -159,10 +169,23 @@ const blob = await convertHtmlToDocx(htmlFragment, { styleSource: "inline" });
 // Computed styles — render the fragment in the live DOM first, then convert
 document.body.innerHTML = htmlFragment;
 const blob2 = await convertHtmlToDocx(htmlFragment, { styleSource: "computed" });
-// reads getComputedStyle from document.body — no Playwright, no headless Chromium
+
+// SPA export — pass the live root so computed paths match element.innerHTML
+const root = document.querySelector(".page-body")!;
+const blob3 = await convertHtmlToDocx(root.innerHTML, {
+  styleSource: "computed",
+  root,
+});
+
+// Charts (Highcharts, canvas) — rasterize to PNG <img> on a clone, then convert
+const blob4 = await convertHtmlToDocx(root.innerHTML, {
+  styleSource: "computed",
+  root,
+  rasterizeInPlace: true, // or { selectors: [".highcharts-container"] }
+});
 ```
 
-Build: `npm run build:browser` → `dist/browser/dom-docx.browser.js`.
+Browser-only options: `root`, `document`, `rasterizeInPlace`. Build: `npm run build:browser` → `dist/browser/dom-docx.browser.js`.
 
 For advanced usage (`buildDocxBuffer`, custom `StyleResolver`, engine architecture), see [API.md](./API.md).
 
@@ -172,11 +195,12 @@ For advanced usage (`buildDocxBuffer`, custom `StyleResolver`, engine architectu
 
 Optimized for **Word-friendly semantic HTML**—headings, paragraphs, lists, data tables, inline formatting, shaded callouts, simple flex rows.
 
-| Excellent                      | Good                            | Avoid                              |
+| Excellent                      | Good                            | Avoid (or use `rasterizeInPlace`)  |
 | ------------------------------ | ------------------------------- | ---------------------------------- |
-| Headings, lists, simple tables | Shaded banners, flex (≤4 items) | SVG charts, CSS grid/float layout  |
-| Inline `strong` / `em` / links | Table row/cell backgrounds      | External stylesheets (inline path) |
-| Short span highlights          | Blockquotes, `<hr>`             | Forms, web fonts                   |
+| Headings, lists, simple tables | Shaded banners, flex (≤4 items) | Live chart libraries (Highcharts, canvas) unless rasterized |
+| Inline `strong` / `em` / links | Table row/cell backgrounds      | Complex SVG paths/gradients unless rasterized |
+| Short span highlights          | Blockquotes, `<hr>`             | External stylesheets (inline path) |
+| Simple SVG bars (rect + text)  | `data:` images                  | Forms, web fonts, CSS grid/float layout |
 
 Full authoring guide for agents: [AGENTS.md](./AGENTS.md).
 
@@ -192,7 +216,7 @@ dom-docx maps a practical HTML subset to native OOXML through a three-stage pipe
 
 Quality is driven by an autonomous loop rather than one-off visual checks:
 
-- **33 regression cases** (`npm run test:suite`) — human-validated **layout fidelity** (ink-projection structure comparison, 85.6% concordance with blind human quality ratings), plus guards for bad contrast, missing list markers, wrong text, and imbalanced shaded blocks; raw pixel match is recorded as a regression tripwire
+- **36 regression cases** (`npm run test:suite`) — human-validated **layout fidelity** (ink-projection structure comparison, 85.6% concordance with blind human quality ratings), plus guards for bad contrast, missing list markers, wrong text, and imbalanced shaded blocks; raw pixel match is recorded as a regression tripwire
 - **Engine score** — 50% visual (layout-based) + 35% editability (native structure, not 1×1 layout tables) + 15% compile speed
 - **OSS benchmark** — same harness scores [html-to-docx](https://www.npmjs.com/package/html-to-docx) and [@turbodocx/html-to-docx](https://www.npmjs.com/package/@turbodocx/html-to-docx) for ongoing comparison ([BENCHMARK.md](./docs/BENCHMARK.md))
 
@@ -210,7 +234,7 @@ For contributors and harness runs (not required to use the library):
 git clone … && npm install && npm run setup
 npm run build              # dist/ for npm pack
 npm run typecheck
-npm run test:suite          # 35-case visual + XML regression
+npm run test:suite          # 36-case visual + XML regression
 npm run test:suite:priority # 10-case fast subset
 npm run test:benchmark     # vs html-to-docx + TurboDocx
 npm run test:config        # ConvertOptions OOXML checks

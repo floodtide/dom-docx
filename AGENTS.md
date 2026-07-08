@@ -57,7 +57,7 @@ Think “Word-friendly semantic HTML,” not “web app layout.”
 
 | Pattern | Why |
 |---------|-----|
-| **Inline SVG / Canvas / `<img>` charts** | Not rendered; use tables or describe data in text |
+| **Inline SVG / Canvas / `<img>` charts** | Not rendered as vectors; use tables, describe data in text, or enable **`rasterizeInPlace`** when exporting from a live rendered page |
 | **CSS bar charts inside cells** | `<div style="height:14px;width:80%;background:…">` in `<td>` does not port |
 | **Emoji as UI icons** | Font/glyph mismatch in Word |
 | **External stylesheets** | Only inline `style=""` and a few attributes (`border`, `cellpadding`, `colspan`) |

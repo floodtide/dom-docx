@@ -15,7 +15,7 @@ import * as cheerio from "cheerio";
 import { unzipSync, zipSync } from "fflate";
 import { BODY_FONT, BODY_FONT_HALF_POINTS, NUMBERING_CONFIG, PAGE_MARGIN_TWIPS } from "./constants.js";
 import { patchDocumentXml, patchNumberingXml } from "./ooxml-patch.js";
-import { applyImageResolver, type ImageResolver } from "./image.js";
+import { applyImageResolver, resetImageDocPrIds, type ImageResolver } from "./image.js";
 import { INLINE_STYLE_RESOLVER, type StyleResolver } from "./style-resolver.js";
 import { htmlToDocxBlocks } from "./visitor.js";
 
@@ -215,6 +215,7 @@ export async function buildDocxUint8Array(
   imageResolver?: ImageResolver,
   documentConfig?: DocumentConfig,
 ): Promise<Uint8Array> {
+  resetImageDocPrIds();
   const resolved = resolveDocumentConfig(documentConfig);
   const $ = cheerio.load(`<body>${html.trim()}</body>`, { xml: false });
   if (imageResolver) await applyImageResolver($, imageResolver);

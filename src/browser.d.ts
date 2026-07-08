@@ -43,12 +43,24 @@ export interface DocumentConfig {
   };
 }
 
+export interface RasterizeInPlaceOptions {
+  /**
+   * Mutate the caller's `root` instead of cloning. Default false — cloning avoids
+   * disturbing a live SPA (Vue/React) while charts are replaced only on the export copy.
+   */
+  mutate?: boolean;
+  /** Extra CSS selectors to rasterize (e.g. `.highcharts-container`). */
+  selectors?: string[];
+}
+
 export interface BrowserConvertOptions {
   styleSource?: StyleSource;
   /** Document to snapshot for `styleSource: "computed"`. Defaults to the host page. */
   document?: Document;
   /** Export root — pass the live element whose innerHTML is converted (SPA export pattern). */
   root?: Element;
+  /** Rasterize canvas/chart SVG under `root` before conversion (requires `root`). */
+  rasterizeInPlace?: boolean | RasterizeInPlaceOptions;
   /** Resolve non-`data:` `<img src>` before conversion (caller owns fetch policy). */
   imageResolver?: (
     src: string,
@@ -89,6 +101,10 @@ export declare function snapshotComputedStylesFromDocument(
   doc?: Document,
   root?: Element | null,
 ): ComputedStyleSnapshot[];
+
+export declare function rasterizeInPlace(root: Element, options?: RasterizeInPlaceOptions): Promise<void>;
+
+export declare function isSimpleSvgElement(svg: Element): boolean;
 
 export interface DomDocxGlobal {
   convertHtmlToDocx: typeof convertHtmlToDocx;
