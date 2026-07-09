@@ -2,6 +2,7 @@ import type { Element } from "domhandler";
 import {
   parseColor,
   parseFontSize,
+  isPageBreakCssValue,
   parseGap,
   parseInlineStyle,
   presentationalAttributesCss,
@@ -73,6 +74,13 @@ export function parsedCssFromComputedRecord(raw: Record<string, string>): Parsed
   css.borderRight = computedBorderSide(raw.borderRightWidth ?? "", raw.borderRightColor ?? "");
   css.borderBottom = computedBorderSide(raw.borderBottomWidth ?? "", raw.borderBottomColor ?? "");
   css.borderLeft = computedBorderSide(raw.borderLeftWidth ?? "", raw.borderLeftColor ?? "");
+
+  if (isPageBreakCssValue(raw.breakBefore ?? "") || isPageBreakCssValue(raw.pageBreakBefore ?? "")) {
+    css.pageBreakBefore = true;
+  }
+  if (isPageBreakCssValue(raw.breakAfter ?? "") || isPageBreakCssValue(raw.pageBreakAfter ?? "")) {
+    css.pageBreakAfter = true;
+  }
 
   return css;
 }
@@ -148,11 +156,17 @@ export class ComputedStyleResolver implements StyleResolver {
   getCss(element: Element): ParsedCss {
     const path = elementStylePath(element);
     const fromComputed = this.byPath.get(path);
+    const inlineCss = INLINE_STYLE_RESOLVER.getCss(element);
     if (fromComputed !== undefined) {
-      return normalizeComputedUACss(element, fromComputed);
+      // Computed snapshots omit some long-tail CSS; inline break-* always wins.
+      return normalizeComputedUACss(element, {
+        ...fromComputed,
+        ...(inlineCss.pageBreakBefore ? { pageBreakBefore: true } : {}),
+        ...(inlineCss.pageBreakAfter ? { pageBreakAfter: true } : {}),
+      });
     }
     // Path miss (e.g. fragment export without root-scoped snapshot) — preserve inline style="".
-    return normalizeComputedUACss(element, INLINE_STYLE_RESOLVER.getCss(element));
+    return normalizeComputedUACss(element, inlineCss);
   }
 }
 

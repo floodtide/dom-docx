@@ -114,6 +114,7 @@ Pass a **body fragment only** (no `<!DOCTYPE>` / `<html>` / `<body>` required). 
 **Charts & complex SVG (optional `rasterizeInPlace`):**
 
 - Rasterizes `<canvas>` and complex `<svg>` (e.g. Highcharts) to PNG `<img>` before conversion
+- **Recommended for charts:** `rasterizeInPlace: { scale: 2 }` — supersamples at 2× density for sharper images in Word (default `scale: 1`; max `4`)
 - **Browser:** requires `root`. Clones off-screen by default so the live page is not mutated
 - **Node:** uses the same Playwright/Chromium context as computed styles; ephemeral spawn pages mutate in place by default
 - Simple inline SVG (rect + text bar charts) still converts natively without rasterization
@@ -157,7 +158,7 @@ const docx = await convertHtmlToDocx(html, {
 | `styleSource`               | `"inline"`    | `"inline"` parses `style=""` only (pure JS, fast). `"computed"` uses `getComputedStyle`. On **Node** this requires Playwright + Chromium; in the **browser bundle** it reads from the live DOM (no Playwright). |
 | `browser` / `page`          | —             | **Node only.** Reuse an open Playwright browser or page (computed styles and/or `rasterizeInPlace`). Not used by `dom-docx/browser`. |
 | `rootSelector`              | —             | **Node only.** CSS selector for the export root when converting `element.innerHTML` from a live Playwright `page`. Must match the node whose HTML you pass. |
-| `rasterizeInPlace`          | —             | Rasterize `<canvas>` / chart `<svg>` to PNG `<img>` before conversion. **Node:** Playwright page; **browser:** requires `root`. See [API.md](./API.md#charts--rasterizeinplace). |
+| `rasterizeInPlace`          | —             | Rasterize `<canvas>` / chart `<svg>` to PNG `<img>` before conversion. **Recommended:** `{ scale: 2 }` for chart exports. **Node:** Playwright page; **browser:** requires `root`. See [API.md](./API.md#charts--rasterizeinplace). |
 | `imageResolver`             | —             | Hook to fetch non-`data:` `<img src>` (library never fetches on its own).                                                                                                                                        |
 | `pageSize`                  | `"letter"`    | `"letter"`, `"a4"` or `{ width, height }` in inches.                                                                                                                                                            |
 | `orientation`               | `"portrait"`  | `"landscape"` swaps dimensions.                                                                                                                                                                                  |
@@ -207,7 +208,7 @@ const blob3 = await convertHtmlToDocx(root.innerHTML, {
 const blob4 = await convertHtmlToDocx(root.innerHTML, {
   styleSource: "computed",
   root,
-  rasterizeInPlace: true, // or { selectors: [".highcharts-container"] }
+  rasterizeInPlace: { scale: 2 }, // recommended for charts; default scale is 1
 });
 ```
 
@@ -225,6 +226,7 @@ Optimized for **Word-friendly semantic HTML**: headings, paragraphs, lists, data
 | ------------------------------ | ------------------------------- | ---------------------------------- |
 | Headings, lists, simple tables | Shaded banners, flex (≤4 items) | Live chart libraries (Highcharts, canvas) unless rasterized |
 | Inline `strong` / `em` / links | Table row/cell backgrounds      | Complex SVG paths/gradients unless rasterized |
+| Explicit page breaks (`break-before: page`, `break-after: page`) | | CSS grid, floats, absolute layout |
 | Short span highlights          | Blockquotes, `<hr>`             | External stylesheets (inline path) |
 | Simple SVG bars (rect + text)  | `data:` images                  | Forms, web fonts, CSS grid/float layout |
 

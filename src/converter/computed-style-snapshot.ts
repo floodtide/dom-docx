@@ -70,6 +70,8 @@ export function snapshotComputedStylesFromDocument(
     "borderBottomColor",
     "borderLeftWidth",
     "borderLeftColor",
+    "breakBefore",
+    "breakAfter",
   ] as const;
 
   const results: ComputedStyleSnapshot[] = [];

@@ -56,6 +56,12 @@ async (rootSelector, options, mutate) => {
     (el.querySelector("title") && el.querySelector("title").textContent.trim()) ||
     "Chart";
 
+  const resolveRasterScale = () => {
+    const scale = (options && options.scale) || 1;
+    if (!Number.isFinite(scale) || scale < 1) return 1;
+    return Math.min(scale, 4);
+  };
+
   const replaceWithImage = (el, dataUrl, width, height) => {
     const img = el.ownerDocument.createElement("img");
     img.src = dataUrl;
@@ -74,36 +80,50 @@ async (rootSelector, options, mutate) => {
     });
 
   const rasterizeCanvas = async (canvas) => {
+    const size = elementSize(canvas);
+    const scale = resolveRasterScale();
     let dataUrl;
     try {
-      dataUrl = canvas.toDataURL("image/png");
+      if (scale <= 1) {
+        dataUrl = canvas.toDataURL("image/png");
+      } else {
+        const out = canvas.ownerDocument.createElement("canvas");
+        out.width = Math.round(size.width * scale);
+        out.height = Math.round(size.height * scale);
+        const ctx = out.getContext("2d");
+        if (!ctx) return;
+        ctx.drawImage(canvas, 0, 0, out.width, out.height);
+        dataUrl = out.toDataURL("image/png");
+      }
     } catch {
       return;
     }
     if (!dataUrl.startsWith("data:image/png")) return;
-    const size = elementSize(canvas);
     replaceWithImage(canvas, dataUrl, size.width, size.height);
   };
 
   const rasterizeSvg = async (svg) => {
     const size = elementSize(svg);
+    const scale = resolveRasterScale();
+    const renderW = Math.round(size.width * scale);
+    const renderH = Math.round(size.height * scale);
     const clone = svg.cloneNode(true);
     if (!clone.getAttribute("xmlns")) {
       clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
     }
-    clone.setAttribute("width", String(size.width));
-    clone.setAttribute("height", String(size.height));
+    clone.setAttribute("width", String(renderW));
+    clone.setAttribute("height", String(renderH));
     const svgData = new XMLSerializer().serializeToString(clone);
     const blob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     try {
       const img = await loadImage(url);
       const canvas = svg.ownerDocument.createElement("canvas");
-      canvas.width = size.width;
-      canvas.height = size.height;
+      canvas.width = renderW;
+      canvas.height = renderH;
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
-      ctx.drawImage(img, 0, 0, size.width, size.height);
+      ctx.drawImage(img, 0, 0, renderW, renderH);
       replaceWithImage(svg, canvas.toDataURL("image/png"), size.width, size.height);
     } finally {
       URL.revokeObjectURL(url);

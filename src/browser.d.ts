@@ -51,6 +51,12 @@ export interface RasterizeInPlaceOptions {
   mutate?: boolean;
   /** Extra CSS selectors to rasterize (e.g. `.highcharts-container`). */
   selectors?: string[];
+  /**
+   * Supersampling factor for PNG rasterization. Renders at `scale`× pixel density
+   * but keeps `<img width>` / `<img height>` at layout size (default `1`, max `4`).
+   * Recommended: `2` for chart exports.
+   */
+  scale?: number;
 }
 
 export interface BrowserConvertOptions {

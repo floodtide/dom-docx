@@ -75,6 +75,7 @@
     "guard:computed-parity": "tsx tools/computed-parity-guard.ts",
     "guard:browser-parity": "npm run build:browser && tsx scripts/browser-spike.ts && tsx tools/browser-build-parity.ts",
     "guard:pack-smoke": "node scripts/pack-smoke.mjs",
+    "guard:page-break": "tsx tools/page-break-test.ts",
 
     "research:wild": "tsx tools/wild-runner.ts",
     "research:wild-corpus": "tsx tools/wild-corpus-build.ts",

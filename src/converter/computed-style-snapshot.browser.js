@@ -48,6 +48,8 @@
     "borderBottomColor",
     "borderLeftWidth",
     "borderLeftColor",
+    "breakBefore",
+    "breakAfter",
   ];
 
   const results = [];

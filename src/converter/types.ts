@@ -41,6 +41,10 @@ export interface BlockLayout {
   shadedContentLinePx?: number;
   /** Font size (half-points) for shaded padding tab runs. */
   shadedTabHalfPoints?: number;
+  /** Force a page break before this paragraph (CSS break-before / class). */
+  pageBreakBefore?: boolean;
+  /** Request a page break before the next block sibling (CSS break-after / class). */
+  pageBreakAfter?: boolean;
 }
 
 export interface FlexLayout {
@@ -80,6 +84,8 @@ export interface VisitorContext {
    * instead of AUTO, so stacked card lines don't inflate vertically vs the browser.
    */
   flexBlockContent?: boolean;
+  /** When true, the next visited block starts on a new page (prior sibling had break-after). */
+  pageBreakBeforeNext?: boolean;
 }
 
 export const DEFAULT_VISITOR_CONTEXT: VisitorContext = {

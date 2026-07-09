@@ -132,6 +132,8 @@ interface RasterizeInPlaceOptions {
   mutate?: boolean;
   /** Extra selectors to rasterize, e.g. [".highcharts-container"]. */
   selectors?: string[];
+  /** Supersampling factor (default `1`, max `4`). Renders PNG at scale× density; display size unchanged. Recommended: `2` for charts. */
+  scale?: number;
 }
 ```
 
@@ -148,7 +150,7 @@ interface RasterizeInPlaceOptions {
 | `convertHtmlToDocxUint8Array(html, options?)` | `Promise<Uint8Array>` | Same bytes, no Blob wrapper |
 | `buildDocxBlob` / `buildDocxUint8Array` | | Lower-level, bring your own `StyleResolver` |
 | `snapshotComputedStylesFromDocument(doc?, root?)` | `ComputedStyleSnapshot[]` | Style snapshots scoped to `root` or `document.body` |
-| `rasterizeInPlace(root, options?)` | `Promise<void>` | Mutates live DOM; prefer `convertHtmlToDocx({ rasterizeInPlace: true })` to clone off-screen |
+| `rasterizeInPlace(root, options?)` | `Promise<void>` | Mutates live DOM; prefer `convertHtmlToDocx({ rasterizeInPlace: { scale: 2 } })` for chart exports |
 | `isSimpleSvgElement(svg)` | `boolean` | True when SVG is simple enough for native rect/text conversion |
 
 All [document options](#options-convertoptions) (`pageSize`, `margins`, `metadata`, …) work here too. `browser`, `page`, and `rootSelector` are Node-only.
@@ -203,7 +205,7 @@ interface DocumentConfig {
 | `browser` | Playwright `Browser` | — | **Node only.** Reuse an already-launched browser across many conversions. |
 | `page` | Playwright `Page` | — | **Node only.** Snapshot styles and/or rasterize from a page you already rendered. |
 | `rootSelector` | `string` | — | **Node only.** CSS selector for the export root when passing `element.innerHTML` from a live `page`. Must match the node whose HTML you convert. |
-| `rasterizeInPlace` | `boolean \| RasterizeInPlaceOptions` | — | Rasterize `<canvas>` and complex `<svg>` (e.g. Highcharts) to PNG `<img>` before conversion. Uses Playwright on Node. See [Charts & rasterizeInPlace](#charts--rasterizeinplace). |
+| `rasterizeInPlace` | `boolean \| RasterizeInPlaceOptions` | — | Rasterize `<canvas>` and complex `<svg>` (e.g. Highcharts) to PNG `<img>` before conversion. Uses Playwright on Node. See [Charts & rasterizeInPlace](#charts--rasterizeinplace). **Recommended for charts:** `{ scale: 2 }`. |
 
 ```typescript
 const docx = await convertHtmlToDocx(html, {
@@ -381,14 +383,24 @@ const docx = await convertHtmlToDocx(html, {
 
 dom-docx converts simple inline SVG (rect + text bars) natively. Chart libraries (Highcharts, Chart.js canvas, complex SVG paths/gradients) need rasterization to PNG `<img>` first.
 
+#### `RasterizeInPlaceOptions`
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `mutate` | `false` on live `root` / `page`; `true` on ephemeral spawn pages | Replace charts in the caller's DOM instead of cloning off-screen. |
+| `selectors` | — | Extra CSS selectors to rasterize (e.g. `[".highcharts-container"]`). |
+| `scale` | `1` (max `4`) | **Supersampling factor.** Renders the PNG at `scale`× pixel density but keeps `<img width>` / `<img height>` at layout size. |
+
+**Recommended for chart exports:** `scale: 2`. At `scale: 1`, chart PNGs match layout pixels 1:1 and often look soft or jagged in Word. `scale: 2` produces sharper images at the cost of larger embedded PNGs (typically ~2–4× file size per chart). Use `scale: 1` when file size matters more than chart crispness.
+
 **Browser** — requires `root`; clones off-screen by default:
 
 ```typescript
 const blob = await convertHtmlToDocx(root.innerHTML, {
   styleSource: "computed",
   root,
-  rasterizeInPlace: true,
-  // or: rasterizeInPlace: { selectors: [".highcharts-container"] },
+  rasterizeInPlace: { scale: 2 },
+  // or: { selectors: [".highcharts-container"], scale: 2 },
 });
 ```
 
@@ -398,7 +410,7 @@ const blob = await convertHtmlToDocx(root.innerHTML, {
 // Ephemeral page (HTML string with rendered chart markup)
 const docx = await convertHtmlToDocx(html, {
   styleSource: "computed",
-  rasterizeInPlace: true, // mutates the throwaway page in place
+  rasterizeInPlace: { scale: 2 }, // mutates the throwaway page in place
 });
 
 // Live Playwright page (e.g. E2E export from a running app)
@@ -406,9 +418,11 @@ const docx2 = await convertHtmlToDocx(fragmentHtml, {
   styleSource: "computed",
   page,
   rootSelector: "#dashboard",
-  rasterizeInPlace: true, // clones off-screen unless { mutate: true }
+  rasterizeInPlace: { scale: 2 }, // clones off-screen unless { mutate: true }
 });
 ```
+
+`rasterizeInPlace: true` is shorthand for default options (`scale: 1`).
 
 | Context | Default `mutate` | Why |
 |---------|------------------|-----|
@@ -449,6 +463,20 @@ Parsed from `style=""` (and from computed snapshots on the computed path):
 | `display` | `block`, `inline-block`, `flex` |
 | `flex-direction` | `row`, `column` |
 | `gap`, `row-gap`, `column-gap` | px |
+| `break-before`, `page-break-before` | `page`, `always`, `left`, `right` → page break before block |
+| `break-after`, `page-break-after` | same values → page break before **next** block sibling |
+
+**Page break examples** (inline styles or computed stylesheet):
+
+Use inline `style=""` or a stylesheet with `styleSource: "computed"`. Example:
+
+```html
+<p style="break-after: page">End of section</p>
+<h2 style="break-before: page">Next section</h2>
+<div style="break-after: page"></div> <!-- break before next block -->
+```
+
+Verified by `npm run guard:page-break` (OOXML + multi-page PDF; not part of the single-page visual suite).
 
 All other CSS properties are silently ignored.
 

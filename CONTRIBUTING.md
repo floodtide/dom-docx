@@ -74,11 +74,13 @@ Each writes a result to `output/guards/<id>.json` (via `tools/guard-result.ts`, 
 - **`guard:pack-smoke`** — `npm pack`s the real tarball, installs it into a clean temp project, and asserts: Playwright isn't a hard/optional dependency, the browser bundle files ship in the tarball, and the library/CLI/browser entry points each actually convert HTML to a valid `.docx`.
 - **`guard:computed-parity`** — computed-oracle and computed-native must emit byte-identical OOXML for identical HTML. This is what backs the claim that the "native" lane (a Playwright-driven stand-in used in the test harness) faithfully represents the real browser deployment.
 - **`guard:browser-parity`** — chained script (`build:browser && browser-spike.ts && browser-build-parity.ts`) asserting the esbuild browser IIFE bundle (`dom-docx/browser`) produces byte-identical output to the Node computed-native path.
+- **`guard:page-break`** — structural page-break test (OOXML `w:pageBreakBefore` + multi-page PDF). Not part of the visual suite — explicit breaks can't be scored with single-page pixel compare.
 
 ```bash
 npm run guard:inline             # CI
 npm run guard:config             # CI
 npm run guard:pack-smoke         # CI
+npm run guard:page-break         # structural page breaks (needs LibreOffice)
 npm run guard:computed-parity    # maintainer-only, needs Playwright
 npm run guard:browser-parity     # maintainer-only, needs Playwright + a built bundle
 ```
@@ -88,6 +90,7 @@ npm run guard:browser-parity     # maintainer-only, needs Playwright + a built b
 Maintainer-only, run occasionally when tuning or auditing the scoring metric rather than the converter. Not part of what gates a release.
 
 - **`research:word-spotcheck`** — the loop scores against LibreOffice, but the real consumer is Microsoft Word, and the two disagree on some layout rules. Renders 5 anchor cases through **both** renderers and reports the adjusted-visual delta, quantifying how much of the metric is LibreOffice-specific artifact vs a real conversion defect. Needs Word on macOS; skips cleanly when unavailable.
+- **Pages / Google Docs** — not gated; see `internal/TODO.md` → *Viewer compatibility* (Pages can mis-render page breaks; Docs import is lossy).
 - **`research:multipage`** — a 14-section stress document exercising page-break/pagination correctness, a dimension the main suite (mostly single-page cases) doesn't cover.
 - **`research:novel`** — randomly generated, seeded HTML structures, looking for structural-robustness bugs that a curated, hand-written suite wouldn't happen to hit.
 - **`research:wild-corpus`** / **`research:wild`** — build, then score, a corpus of real-world pages the converter was **not** tuned on (email templates, legacy table layouts, wiki tables, book prose, rendered markdown) — a check against overfitting to the curated suite.

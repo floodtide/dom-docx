@@ -27,6 +27,7 @@ import {
 import {
   blockLayoutToParagraphProps,
   cssToBlockLayout,
+  elementRequestsPageBreakAfter,
   isBlockElement,
   isHiddenElement,
   layoutForNativeShadedBlock,
@@ -202,13 +203,17 @@ function resolveBlockLayout(ctx: VisitorContext, element: Element): BlockLayout 
     ctx,
   );
   const inherited = ctx.inheritedLayout ?? {};
-  return {
+  const layout = {
     ...local,
     alignment: local.alignment ?? inherited.alignment,
     indentLeft: sumIndent(inherited.indentLeft, local.indentLeft),
     indentRight: local.indentRight ?? inherited.indentRight,
     borders: local.borders ?? inherited.borders,
   };
+  if (ctx.pageBreakBeforeNext) {
+    layout.pageBreakBefore = true;
+  }
+  return layout;
 }
 
 function emptyRun(size = BODY_FONT_HALF_POINTS): TextRun {
@@ -504,6 +509,28 @@ function blockquoteLayout(
   return layout;
 }
 
+function mediaHeightPx(el: Element): number | undefined {
+  const h = el.attribs?.height;
+  if (!h) return undefined;
+  const n = parseFloat(h);
+  return Number.isFinite(n) && n > 0 ? n : undefined;
+}
+
+function maxInlineMediaHeightTwips(nodes: AnyNode[]): number {
+  let maxTwips = 0;
+  const walk = (node: AnyNode): void => {
+    if (!isElement(node)) return;
+    const tag = node.name.toLowerCase();
+    if (tag === "img" || tag === "canvas") {
+      const h = mediaHeightPx(node);
+      if (h) maxTwips = Math.max(maxTwips, pxToTwips(h));
+    }
+    for (const child of node.children ?? []) walk(child);
+  };
+  for (const node of nodes) walk(node);
+  return maxTwips;
+}
+
 /** Flush a fresh paragraph on block boundaries; inline backgrounds stay on TextRuns. */
 function emitFlowBlocks(
   $: CheerioAPI,
@@ -522,8 +549,10 @@ function emitFlowBlocks(
     const hasLineBreaks = nodesHaveLineBreaks(pendingInline);
     // In a flex-item's block children, size each line box to its own font (CSS
     // line-height 1.4), not AUTO — halfPt/2 → pt × 1.4 × 20 twips = halfPt × 14.
+    // Rasterized chart images need a taller line box or LibreOffice clips them.
+    const textLineTwips = (inheritedTypography.fontSize ?? ctx.defaultSizeHalfPoints) * 14;
     const exactLineTwips = ctx.flexBlockContent
-      ? (inheritedTypography.fontSize ?? ctx.defaultSizeHalfPoints) * 14
+      ? Math.max(textLineTwips, maxInlineMediaHeightTwips(pendingInline))
       : undefined;
     blocks.push(
       ...emitBlockContent(
@@ -557,7 +586,31 @@ function emitFlowBlocks(
 }
 
 /** Tight content height (twips) of a card-style flex item: one EXACT line box per
- *  block child (fontSize × 14 = size × 1.4) plus the item's top/bottom padding. */
+ *  block child (fontSize × 14 = size × 1.4) plus the item's top/bottom padding.
+ *  Rasterized charts/images can be much taller than a single text line — include them. */
+function estimateFlexItemMediaHeightTwips(
+  item: Element,
+  itemLayout: BlockLayout,
+  ctx: VisitorContext,
+): number {
+  let maxTwips = 0;
+  const walk = (el: Element): void => {
+    const tag = el.name.toLowerCase();
+    if (tag === "img" || tag === "canvas") {
+      const h = mediaHeightPx(el);
+      if (h) maxTwips = Math.max(maxTwips, pxToTwips(h));
+    }
+    const css = ctx.styleResolver.getCss(el);
+    if (css.heightTwips) maxTwips = Math.max(maxTwips, css.heightTwips);
+    for (const child of el.children ?? []) {
+      if (isElement(child)) walk(child);
+    }
+  };
+  walk(item);
+  if (maxTwips === 0) return 0;
+  return maxTwips + (itemLayout.paddingTop ?? 0) + (itemLayout.paddingBottom ?? 0);
+}
+
 function estimateFlexItemContentHeight(
   item: Element,
   itemLayout: BlockLayout,
@@ -568,7 +621,9 @@ function estimateFlexItemContentHeight(
     const fontSize = typographyFromBlockElement(child, ctx.styleResolver).fontSize ?? ctx.defaultSizeHalfPoints;
     lines += fontSize * 14;
   }
-  return lines + (itemLayout.paddingTop ?? 0) + (itemLayout.paddingBottom ?? 0);
+  const textHeight = lines + (itemLayout.paddingTop ?? 0) + (itemLayout.paddingBottom ?? 0);
+  const mediaHeight = estimateFlexItemMediaHeightTwips(item, itemLayout, ctx);
+  return Math.max(textHeight, mediaHeight);
 }
 
 function processFlexContainer(
@@ -672,6 +727,7 @@ function processBlockContainer(
     // `<img>` inside a `<figure>` alongside its `<figcaption>`) isn't dropped.
     const blocks: DocxBlock[] = [];
     let pendingInline: AnyNode[] = [];
+    let forceBreakBefore = Boolean(layout.pageBreakBefore);
     const flushInline = (): void => {
       if (pendingInline.length === 0) return;
       const runs = collectInlineRunsFromNodes(pendingInline, typography, undefined, ctx.styleResolver, ctx.defaultSizeHalfPoints);
@@ -681,15 +737,19 @@ function processBlockContainer(
         const flushLayout: BlockLayout = {
           alignment: layout.alignment,
           spacingBefore: isFirst ? layout.marginTop : undefined,
+          pageBreakBefore: isFirst && forceBreakBefore ? true : undefined,
         };
         blocks.push(...emitBlockContent(runs, flushLayout, {}, element));
+        if (isFirst) forceBreakBefore = false;
       }
       pendingInline = [];
     };
     for (const child of element.children ?? []) {
       if (isElement(child) && isBlockElement(child, ctx.styleResolver)) {
         flushInline();
-        blocks.push(...visitElement($, child, childCtx));
+        const visitCtx = forceBreakBefore ? { ...childCtx, pageBreakBeforeNext: true } : childCtx;
+        blocks.push(...visitElement($, child, visitCtx));
+        forceBreakBefore = elementRequestsPageBreakAfter(child, ctx.styleResolver);
       } else {
         pendingInline.push(child);
       }
@@ -1133,15 +1193,20 @@ export function visitNodes(
 ): DocxBlock[] {
   const blocks: DocxBlock[] = [];
   let pendingInline: AnyNode[] = [];
+  let breakBeforeNext = Boolean(ctx.pageBreakBeforeNext);
 
   const flushInline = (): void => {
     if (pendingInline.length === 0) return;
     blocks.push(
       makeParagraph(
         collectInlineRunsFromNodes(pendingInline, {}, undefined, ctx.styleResolver, ctx.defaultSizeHalfPoints),
-        ctx.inheritedLayout ?? {},
+        {
+          ...(ctx.inheritedLayout ?? {}),
+          ...(breakBeforeNext ? { pageBreakBefore: true } : {}),
+        },
       ),
     );
+    breakBeforeNext = false;
     pendingInline = [];
   };
 
@@ -1155,11 +1220,14 @@ export function visitNodes(
 
     if (isBlockElement(node, ctx.styleResolver)) {
       flushInline();
-      const childCtx =
-        ctx.blockquoteDepth > 0 || ctx.inheritedLayout
+      const childCtx: VisitorContext = {
+        ...(ctx.blockquoteDepth > 0 || ctx.inheritedLayout
           ? ctx
-          : { ...ctx, inheritedLayout: undefined };
+          : { ...ctx, inheritedLayout: undefined }),
+        pageBreakBeforeNext: breakBeforeNext || undefined,
+      };
       blocks.push(...visitElement($, node, childCtx));
+      breakBeforeNext = elementRequestsPageBreakAfter(node, ctx.styleResolver);
     } else {
       pendingInline.push(node);
     }

@@ -30,6 +30,18 @@ export interface RasterizeInPlaceOptions {
   mutate?: boolean;
   /** Extra CSS selectors to rasterize (e.g. `.highcharts-container`). */
   selectors?: string[];
+  /**
+   * Supersampling factor for PNG rasterization. Renders at `scale`× pixel density
+   * but keeps `<img width>` / `<img height>` at layout size (default `1`, max `4`).
+   * Recommended: `2` for chart exports.
+   */
+  scale?: number;
+}
+
+function resolveRasterScale(options?: RasterizeInPlaceOptions): number {
+  const scale = options?.scale ?? 1;
+  if (!Number.isFinite(scale) || scale < 1) return 1;
+  return Math.min(scale, 4);
 }
 
 function loadImage(url: string): Promise<HTMLImageElement> {
@@ -91,26 +103,40 @@ function replaceWithImage(el: Element, dataUrl: string, width: number, height: n
   el.replaceWith(img);
 }
 
-async function rasterizeCanvas(canvas: HTMLCanvasElement): Promise<void> {
+async function rasterizeCanvas(canvas: HTMLCanvasElement, options?: RasterizeInPlaceOptions): Promise<void> {
+  const { width, height } = elementSize(canvas);
+  const scale = resolveRasterScale(options);
   let dataUrl: string;
   try {
-    dataUrl = canvas.toDataURL("image/png");
+    if (scale <= 1) {
+      dataUrl = canvas.toDataURL("image/png");
+    } else {
+      const out = canvas.ownerDocument.createElement("canvas");
+      out.width = Math.round(width * scale);
+      out.height = Math.round(height * scale);
+      const ctx = out.getContext("2d");
+      if (!ctx) return;
+      ctx.drawImage(canvas, 0, 0, out.width, out.height);
+      dataUrl = out.toDataURL("image/png");
+    }
   } catch {
     return;
   }
   if (!dataUrl.startsWith("data:image/png")) return;
-  const { width, height } = elementSize(canvas);
   replaceWithImage(canvas, dataUrl, width, height);
 }
 
-async function rasterizeSvg(svg: SVGSVGElement): Promise<void> {
+async function rasterizeSvg(svg: SVGSVGElement, options?: RasterizeInPlaceOptions): Promise<void> {
   const { width, height } = elementSize(svg);
+  const scale = resolveRasterScale(options);
+  const renderW = Math.round(width * scale);
+  const renderH = Math.round(height * scale);
   const clone = svg.cloneNode(true) as SVGSVGElement;
   if (!clone.getAttribute("xmlns")) {
     clone.setAttribute("xmlns", "http://www.w3.org/2000/svg");
   }
-  clone.setAttribute("width", String(width));
-  clone.setAttribute("height", String(height));
+  clone.setAttribute("width", String(renderW));
+  clone.setAttribute("height", String(renderH));
 
   const svgData = new XMLSerializer().serializeToString(clone);
   const blob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
@@ -119,11 +145,11 @@ async function rasterizeSvg(svg: SVGSVGElement): Promise<void> {
   try {
     const img = await loadImage(url);
     const canvas = svg.ownerDocument.createElement("canvas");
-    canvas.width = width;
-    canvas.height = height;
+    canvas.width = renderW;
+    canvas.height = renderH;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    ctx.drawImage(img, 0, 0, width, height);
+    ctx.drawImage(img, 0, 0, renderW, renderH);
     replaceWithImage(svg, canvas.toDataURL("image/png"), width, height);
   } finally {
     URL.revokeObjectURL(url);
@@ -177,8 +203,8 @@ function elementDepth(el: Element): number {
 
 async function rasterizeTargets(root: Element, options?: RasterizeInPlaceOptions): Promise<void> {
   for (const el of collectRasterizeTargets(root, options)) {
-    if (el instanceof HTMLCanvasElement) await rasterizeCanvas(el);
-    else if (el instanceof SVGSVGElement) await rasterizeSvg(el);
+    if (el instanceof HTMLCanvasElement) await rasterizeCanvas(el, options);
+    else if (el instanceof SVGSVGElement) await rasterizeSvg(el, options);
   }
 }
 

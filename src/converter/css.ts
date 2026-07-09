@@ -56,6 +56,10 @@ export interface ParsedCss {
   borderRight?: ParsedBorder;
   borderBottom?: ParsedBorder;
   borderLeft?: ParsedBorder;
+  /** CSS break-before / page-break-before → Word pageBreakBefore. */
+  pageBreakBefore?: boolean;
+  /** CSS break-after / page-break-after — applied to the next block sibling. */
+  pageBreakAfter?: boolean;
 }
 
 const PX_TO_TWIPS = 15;
@@ -344,11 +348,32 @@ export function parseInlineStyle(style: string | undefined): ParsedCss {
       case "border-left":
         result.borderLeft = parseBorderShorthand(value);
         break;
+      case "break-before":
+      case "page-break-before":
+        if (isPageBreakCssValue(value)) result.pageBreakBefore = true;
+        break;
+      case "break-after":
+      case "page-break-after":
+        if (isPageBreakCssValue(value)) result.pageBreakAfter = true;
+        break;
       default:
         break;
     }
   }
   return result;
+}
+
+/** True for CSS break values that start a new page in print layout. */
+export function isPageBreakCssValue(value: string): boolean {
+  const v = value.trim().toLowerCase();
+  return v === "page" || v === "always" || v === "left" || v === "right";
+}
+
+export function elementRequestsPageBreakAfter(
+  element: Element,
+  resolver: StyleResolver = INLINE_STYLE_RESOLVER,
+): boolean {
+  return Boolean(resolver.getCss(element).pageBreakAfter);
 }
 
 /**
@@ -518,6 +543,8 @@ export function cssToBlockLayout(css: ParsedCss): BlockLayout {
     indentLeft: sumTwips(css.marginLeft, css.paddingLeft),
     indentRight: sumTwips(css.marginRight, css.paddingRight),
     borders: buildBlockBorders(css),
+    pageBreakBefore: css.pageBreakBefore || undefined,
+    pageBreakAfter: css.pageBreakAfter || undefined,
   };
 }
 
@@ -676,6 +703,7 @@ export function blockLayoutToParagraphProps(
           },
         }
       : {}),
+    ...(layout.pageBreakBefore ? { pageBreakBefore: true } : {}),
     ...(indent ? { indent } : {}),
     ...(borderEntries.length > 0
       ? {

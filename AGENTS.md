@@ -57,7 +57,7 @@ Think “Word-friendly semantic HTML,” not “web app layout.”
 
 | Pattern | Why |
 |---------|-----|
-| **Inline SVG / Canvas / `<img>` charts** | Not rendered as vectors; use tables, describe data in text, or enable **`rasterizeInPlace`** when exporting from a live rendered page |
+| **Inline SVG / Canvas / `<img>` charts** | Not rendered as vectors; use tables, describe data in text, or enable **`rasterizeInPlace`** when exporting from a live rendered page (recommended: `{ scale: 2 }` for chart quality) |
 | **CSS bar charts inside cells** | `<div style="height:14px;width:80%;background:…">` in `<td>` does not port |
 | **Emoji as UI icons** | Font/glyph mismatch in Word |
 | **External stylesheets** | Only inline `style=""` and a few attributes (`border`, `cellpadding`, `colspan`) |
@@ -235,6 +235,7 @@ Everything else is ignored silently.
 | `thead`, `tbody`, `tfoot` | Table structure (rows collected) |
 | `blockquote` | Indented quotations |
 | `hr` | Thematic break |
+| `break-before: page`, `break-after: page` | Explicit page breaks — see [API.md](./API.md#supported-html--css) |
 | `strong`, `b`, `em`, `i`, `u` | Inline emphasis |
 | `a` | Hyperlinks |
 | `span` | Inline color / background |

@@ -60,6 +60,31 @@ function elementPlainText(element: Element): string {
 /** Word/LibreOffice Arial runs slightly wider than our glyph estimate — pad shrink-wrapped flex columns. */
 const FLEX_ITEM_WIDTH_SAFETY_TWIPS = pxToTwips(8);
 
+function mediaWidthPx(el: Element): number | undefined {
+  const w = el.attribs?.width;
+  if (!w) return undefined;
+  const n = parseFloat(w);
+  return Number.isFinite(n) && n > 0 ? n : undefined;
+}
+
+function estimateSubtreeMediaWidthTwips(element: Element, styleResolver: StyleResolver): number {
+  let maxTwips = 0;
+  const walk = (el: Element): void => {
+    const tag = el.name.toLowerCase();
+    if (tag === "img" || tag === "canvas") {
+      const w = mediaWidthPx(el);
+      if (w) maxTwips = Math.max(maxTwips, pxToTwips(w));
+    }
+    const css = styleResolver.getCss(el);
+    if (css.widthTwips) maxTwips = Math.max(maxTwips, css.widthTwips);
+    for (const child of el.children ?? []) {
+      if (child.type === "tag") walk(child);
+    }
+  };
+  walk(element);
+  return maxTwips;
+}
+
 export function estimateFlexItemWidthTwips(
   element: Element,
   layout: BlockLayout,
@@ -69,9 +94,11 @@ export function estimateFlexItemWidthTwips(
   const css = styleResolver.getCss(element);
   const bold = css.fontWeight === "bold" || Number(css.fontWeight) >= 600;
   const padX = (layout.paddingLeft ?? 0) + (layout.paddingRight ?? 0);
+  const mediaWidth = estimateSubtreeMediaWidthTwips(element, styleResolver);
   const content = Math.max(
     minContentWidthTwips(32),
     estimateTextWidthTwips(text, { bold, fontSizeHalfPoints: css.fontSize }),
+    mediaWidth,
   );
   return padX + content + FLEX_ITEM_WIDTH_SAFETY_TWIPS;
 }
