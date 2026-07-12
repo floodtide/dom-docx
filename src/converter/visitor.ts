@@ -1009,6 +1009,16 @@ function processHeading($: CheerioAPI, element: Element, ctx: VisitorContext): D
     spacingBefore: sumTwips(layout.paddingTop, layout.marginTop),
     spacingAfter: sumTwips(layout.paddingBottom, layout.marginBottom),
   };
+  // A heading should never smash into the block above it. Web layouts routinely
+  // zero heading margins and rely on flex/grid `gap` or container padding for the
+  // spacing — which has no equivalent in a flat docx (the computed path faithfully
+  // reproduces `margin-top: 0`). Floor the top spacing to ~0.5em of the heading
+  // font so a heading always keeps breathing room; a larger real margin still wins.
+  // Skipped inside flex cards, which manage their own tight vertical rhythm.
+  if (!ctx.flexBlockContent) {
+    const headingTopFloor = pxToTwips((fontSize / 1.5) * 0.5);
+    layout = { ...layout, spacingBefore: Math.max(layout.spacingBefore ?? 0, headingTopFloor) };
+  }
   const typography: RunTypography = {
     ...fromElement,
     bold: true,

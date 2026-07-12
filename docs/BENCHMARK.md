@@ -15,25 +15,25 @@ All libraries use the **same visual harness**: human-validated layout fidelity p
 
 ---
 
-## Suite summary (1 cases)
+## Suite summary (37 cases)
 
 | Metric | html-to-docx | @turbodocx/html-to-docx | dom-docx |
 |--------|---:|---:|---:|
-| XML schema pass | 0 / 1 | 0 / 1 | **1 / 1** |
-| Avg **visual (layout-based)** | 66.09% | 68.27% | **63.76%** |
-| Avg editability | 100.00 | 100.00 | 100.00 |
-| Avg engine score | 82.27 | 83.57 | **72.99** |
-| Avg compile | 18.4 ms | 18.7 ms | 85.0 ms |
+| XML schema pass | 0 / 37 | 0 / 37 | **37 / 37** |
+| Avg **visual (layout-based)** | 66.09% | 68.27% | **96.27%** |
+| Avg editability | 100.00 | 100.00 | 99.46 |
+| Avg engine score | 82.33 | 83.41 | **94.91** |
+| Avg compile | 16.9 ms | 19.1 ms | 50.9 ms |
 
 Δ vs dom-docx (library − dom-docx):
 
 | Library | Δ visual | Δ engine |
 |---------|---------:|---------:|
-| html-to-docx | **-30.18** | -13.17 |
-| @turbodocx/html-to-docx | **-28.00** | -11.87 |
+| html-to-docx | **-30.18** | -12.58 |
+| @turbodocx/html-to-docx | **-28.00** | -11.50 |
 
-**dom-docx wins 34 / 1 cases** against html-to-docx (higher layout-based visual score).
-**dom-docx wins 30 / 1 cases** against @turbodocx/html-to-docx (higher layout-based visual score).
+**dom-docx wins 34 / 37 cases** against html-to-docx (higher layout-based visual score).
+**dom-docx wins 30 / 37 cases** against @turbodocx/html-to-docx (higher layout-based visual score).
 
 ---
 
@@ -121,15 +121,24 @@ All libraries use the **same visual harness**: human-validated layout fidelity p
 | `centered-paragraph` | ✗ | 96.99% | 95.93% | +1.06 |
 | `paragraph-with-line-break` | ✗ | 96.73% | 95.42% | +1.31 |
 
+### List comparison (layout-based visual)
+
+| Library | `simple-unordered-list` | `simple-ordered-list` | `ordered-list-rich-inline` | `paragraph-and-list` | `nested-blockquotes-lists` | `unicode-emoji-content` | `ordered-list-lower-alpha` | `ordered-list-upper-roman` | `unordered-list-square` |
+|---------|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| dom-docx | **96.49%** | **96.34%** | **97.24%** | **96.20%** | **91.00%** | **96.30%** | **96.45%** | **96.24%** | **96.06%** |
+| html-to-docx | 77.16% | 95.28% | 90.66% | 84.12% | 12.11% | 49.01% | 94.31% | 93.44% | 86.71% |
+| @turbodocx/html-to-docx | 70.00% | 93.28% | 93.97% | 72.59% | 11.51% | 77.67% | 69.97% | 69.97% | 69.16% |
+
+---
 
 ## Style source: inline vs computed-oracle vs computed-native (dom-docx)
 
 <!-- SECTION:style-source:START -->
 | Metric | inline | computed-oracle | computed-native |
 |--------|-------:|----------------:|----------------:|
-| Avg **adjusted** visual | 95.65% | 93.29% | 93.29% |
-| Avg engine score | 95.24 | 81.45 | 94.03 |
-| Avg compile | 43.4 ms | 626.5 ms | 27.3 ms |
+| Avg **adjusted** visual | 96.27% | 92.51% | 92.51% |
+| Avg engine score | 94.91 | 81.07 | 92.13 |
+| Avg compile | 50.9 ms | 671.0 ms | 45.1 ms |
 
 Δ native − oracle (visual): +0.00. Regenerate: `npm run score:style-source` (needs a fresh `npm run score:suite` baseline).
 <!-- SECTION:style-source:END -->
@@ -143,7 +152,7 @@ Cases: `tools/css-cascade-cases.ts`. Regenerate: `npm run score:css-cascade`.
 
 | Metric | inline | computed | Δ |
 |--------|-------:|---------:|--:|
-| Avg adjusted visual | 63.51% | 96.62% | **+33.11** |
+| Avg adjusted visual | 63.50% | 96.57% | **+33.06** |
 | Cases passed | — | 10 / 10 | — |
 
 Regenerate: `npm run score:css-cascade`.

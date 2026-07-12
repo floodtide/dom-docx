@@ -6,6 +6,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Headings no longer smash into the block above them.** Web layouts routinely zero heading margins and rely on flex/grid `gap` or container padding for spacing — which has no equivalent in a flat docx, so on the computed path a `margin-top: 0` heading rendered flush against the previous paragraph or table. Heading top spacing is now floored to ~0.5em of the heading font (a larger real margin still wins; the floor is skipped inside flex cards).
+
 ### Added
 
 - **`tocHtml`** — caller-provided table-of-contents "slot": an HTML fragment placed after the cover page (if any) and before the body. You control the markup and styling (numbered, boxed, columns…); in-page links (`<a href="#id">`) jump to the matching `id` in the body. Add a trailing `<div style="break-after:page"></div>` to put it on its own page. Guard: `npm run guard:toc-slot`.

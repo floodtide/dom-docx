@@ -2,14 +2,14 @@
 
 ## Repository layout
 
-| Path | Purpose |
-|------|---------|
-| **`src/`** | Published library — `index.ts`, `browser.ts`, `converter.ts`, `converter/*` |
-| **`tools/`** | Visual harness, benchmarks, scoring — **not** shipped on npm |
-| **`examples/`** | Committed sample HTML, DOCX output, side-by-side previews |
-| **`docs/`** | Dev documentation (scores, benchmarks, scoring methodology) |
-| **`scripts/`** | Browser bundle build + pack smoke test |
-| **`output/`** | Gitignored harness artifacts (`suite/`, `benchmark/`, `showcase/`, `css-cascade/`, `guards/`) |
+| Path            | Purpose                                                                                       |
+| --------------- | --------------------------------------------------------------------------------------------- |
+| **`src/`**      | Published library — `index.ts`, `browser.ts`, `converter.ts`, `converter/*`                   |
+| **`tools/`**    | Visual harness, benchmarks, scoring — **not** shipped on npm                                  |
+| **`examples/`** | Committed sample HTML, DOCX output, side-by-side previews                                     |
+| **`docs/`**     | Dev documentation (scores, benchmarks, scoring methodology)                                   |
+| **`scripts/`**  | Browser bundle build + pack smoke test                                                        |
+| **`output/`**   | Gitignored harness artifacts (`suite/`, `benchmark/`, `showcase/`, `css-cascade/`, `guards/`) |
 
 The npm package includes only `dist/`, `README.md`, `LICENSE`, `API.md`, and `examples/` (see `"files"` in `package.json`).
 
@@ -30,7 +30,7 @@ npm run typecheck
 npm run build          # dist/ for npm pack
 ```
 
-Everything below groups into four tiers by what it's actually for — a scored regression, a binary invariant, or a check on the *metric* rather than the converter. Prefixes match the group (`score:*`, `guard:*`, `research:*`); `showcase` and the build/setup commands above don't fit any of the four and stand on their own.
+Everything below groups into four tiers by what it's actually for — a scored regression, a binary invariant, or a check on the _metric_ rather than the converter. Prefixes match the group (`score:*`, `guard:*`, `research:*`); `showcase` and the build/setup commands above don't fit any of the four and stand on their own.
 
 ### 1. Core score — the primary signal, run every iteration
 
@@ -48,12 +48,13 @@ npm run docs:sync
 
 ### 2. Comparative scoring — periodic, feeds docs via `docs:sync`, not part of every dev loop
 
-- **`score:benchmark`** — scores `html-to-docx` and `@turbodocx/html-to-docx` through the *identical* harness (same cases, same scoring) so dom-docx's numbers are directly comparable. Reads dom-docx's own baseline from `output/suite/results.json` to compute deltas — run `score:suite` first. Takes an optional arg to run just one library.
-- **`score:style-source`** — inline vs computed-oracle vs computed-native, run against the **main suite** (`tools/generator.ts`), which is 100% inline `style=""` with no `<style>` blocks or classes at all. Since inline resolution already sees everything on this suite, this benchmark isn't measuring "does computed find more" — there's nothing more to find. It measures two other things: (1) whether switching to computed resolution regresses anything on ordinary inline content (the three lanes land within ~0.35pp of each other, which is the proof it doesn't), and (2) the performance/architecture cost between the two ways of *doing* computed resolution — **oracle** spawns its own Playwright page per call (~630ms), **native** reads an already-rendered page (~27ms), same output. Needs a fresh `score:suite` baseline.
+- **`score:benchmark`** — scores `html-to-docx` and `@turbodocx/html-to-docx` through the _identical_ harness (same cases, same scoring) so dom-docx's numbers are directly comparable. Reads dom-docx's own baseline from `output/suite/results.json` to compute deltas — run `score:suite` first. Takes an optional arg to run just one library.
+- **`score:style-source`** — inline vs computed-oracle vs computed-native, run against the **main suite** (`tools/generator.ts`), which is 100% inline `style=""` with no `<style>` blocks or classes at all. Since inline resolution already sees everything on this suite, this benchmark isn't measuring "does computed find more" — there's nothing more to find. It measures two other things: (1) whether switching to computed resolution regresses anything on ordinary inline content (the three lanes land within ~0.35pp of each other, which is the proof it doesn't), and (2) the performance/architecture cost between the two ways of _doing_ computed resolution — **oracle** spawns its own Playwright page per call (~630ms), **native** reads an already-rendered page (~27ms), same output. Needs a fresh `score:suite` baseline.
 - **`score:css-cascade`** — inline vs computed, run against a **separate, purpose-built fixture** (`tools/css-cascade-cases.ts`) where styles live in `<style>` blocks and classes with **no** matching inline style on the styled elements (one deliberate exception, `stylesheet-inline-wins`, proving inline still overrides class when both are present). This is where the inline resolver is actually blind — it scores far lower here because it structurally cannot see stylesheet rules — so this is the capability/correctness benchmark: does computed resolution correctly implement the cascade the inline path can't see at all.
 
   **`score:style-source` and `score:css-cascade` are not redundant** even though both compare inline vs computed — they run against different fixtures to answer different questions: one checks for regression + measures perf cost using content both paths see identically, the other checks a real capability gap using content deliberately invisible to one of the two paths.
-- **`score:calibration`** — pushes the *same* HTML through both pipeline sides (Chromium screenshot vs Chromium-printed PDF) with **no conversion involved**, to measure how much score deficit is pipeline/rendering noise vs an actual conversion defect. Add `-- --full` to run all cases instead of the priority subset.
+
+- **`score:calibration`** — pushes the _same_ HTML through both pipeline sides (Chromium screenshot vs Chromium-printed PDF) with **no conversion involved**, to measure how much score deficit is pipeline/rendering noise vs an actual conversion defect. Add `-- --full` to run all cases instead of the priority subset.
 
 ```bash
 npm run score:benchmark
@@ -94,7 +95,7 @@ npm run guard:browser-parity     # maintainer-only, needs Playwright + a built b
 Maintainer-only, run occasionally when tuning or auditing the scoring metric rather than the converter. Not part of what gates a release.
 
 - **`research:word-spotcheck`** — the loop scores against LibreOffice, but the real consumer is Microsoft Word, and the two disagree on some layout rules. Renders 5 anchor cases through **both** renderers and reports the adjusted-visual delta, quantifying how much of the metric is LibreOffice-specific artifact vs a real conversion defect. Needs Word on macOS; skips cleanly when unavailable.
-- **Pages / Google Docs** — not gated; see `internal/TODO.md` → *Viewer compatibility* (Pages can mis-render page breaks; Docs import is lossy).
+- **Pages / Google Docs** — not gated; see `internal/TODO.md` → _Viewer compatibility_ (Pages can mis-render page breaks; Docs import is lossy).
 - **`research:multipage`** — a 14-section stress document exercising page-break/pagination correctness, a dimension the main suite (mostly single-page cases) doesn't cover.
 - **`research:novel`** — randomly generated, seeded HTML structures, looking for structural-robustness bugs that a curated, hand-written suite wouldn't happen to hit.
 - **`research:wild-corpus`** / **`research:wild`** — build, then score, a corpus of real-world pages the converter was **not** tuned on (email templates, legacy table layouts, wiki tables, book prose, rendered markdown) — a check against overfitting to the curated suite.
