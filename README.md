@@ -41,6 +41,7 @@ npx dom-docx input.html -o output.docx
 npx dom-docx input.html                      # writes input.docx next to it
 cat fragment.html | npx dom-docx - -o -      # stdin → binary stdout (pipelines)
 npx dom-docx input.html -s computed          # stylesheet/class HTML (needs playwright installed)
+npm install -g dom-docx                      # optional: install globally, then run "dom-docx" without npx
 ```
 
 Input is a **body HTML fragment**, same as the API. `--help` for all options.
