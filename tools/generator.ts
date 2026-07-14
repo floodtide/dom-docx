@@ -195,6 +195,26 @@ const docx = await convertHtmlToDocx(html);</code></pre>
     `,
   },
   {
+    name: "admonition-note",
+    description: "Docs `note` admonition — box synthesized from class (browser styling via CSS)",
+    // The browser paints the box from the stylesheet; the inline path ignores `<style>`
+    // and synthesizes the same box from the `admonition note` class (real docs sites
+    // style admonitions in shadow DOM / external CSS the inline path can't read). The
+    // stylesheet colors match the synthesized defaults so both render the same callout.
+    html: `
+      <style>
+        .admonition { background:#f4f4f5; border-left:3px solid #5a7ea6; padding:10px 12px; }
+        .admonition_header { font-weight:bold; }
+      </style>
+      <p>Custom udev rules live in a specific directory.</p>
+      <div class="admonition note">
+        <div class="admonition_header">Note</div>
+        <div><p>Rules in <code>/etc/udev/rules.d</code> take precedence over the package defaults in <code>/usr/lib/udev/rules.d/</code>.</p></div>
+      </div>
+      <p>The two directories are merged before use.</p>
+    `,
+  },
+  {
     name: "simple-blockquote",
     description: "Plain blockquote + paragraph",
     html: `

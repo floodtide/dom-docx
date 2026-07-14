@@ -468,6 +468,9 @@ export function isBlockElement(element: Element, resolver: StyleResolver = INLIN
   // block-container dispatch — which has no image handling, silently dropping it.
   const tag = element.name.toLowerCase();
   if (tag === "img" || tag === "picture") return false;
+  // Alert/callout web components render as block boxes; treat them as block so the
+  // inline path (no computed `display`) doesn't flatten a `<rh-alert>` note to inline text.
+  if (tag === "rh-alert" || tag === "sl-alert") return true;
   const css = resolver.getCss(element);
   const display = css.display;
 
@@ -603,11 +606,79 @@ export function cssToInlineRunTypography(css: ParsedCss): RunTypography {
   return typography;
 }
 
+/** Web-component alert elements whose visual box lives in shadow DOM (unreadable). */
+const ADMONITION_TAGS = new Set(["rh-alert", "sl-alert"]);
+/** Admonition/callout class token conventions (DocBook, AsciiDoc, Sphinx, MkDocs, Bootstrap).
+ *  Whitespace-bounded so a whole class token must match — `admonition_header` (a sub-part)
+ *  does NOT match `admonition`, so the title/body children don't each get their own box. */
+const ADMONITION_CLASS =
+  /(?:^|\s)(admonition|admonitionblock|callout|note|tip|hint|important|warning|caution|danger|notice|attention|alert)(?:$|\s)/i;
+/** Accent-bar color by admonition severity; falls through to the note/info blue. */
+const ADMONITION_BARS: Array<[RegExp, string]> = [
+  [/\b(warning|caution|attention)\b/i, "D1902A"],
+  [/\b(danger|error|important)\b/i, "C0392B"],
+  [/\b(tip|hint|success)\b/i, "3F9E5B"],
+];
+const ADMONITION_DEFAULT_BAR = "5A7EA6";
+/** Admonition title/header (the "Note"/"Warning" label) — rendered bold. */
+const ADMONITION_HEADER_CLASS =
+  /\badmonition[_-]?(header|title|heading)\b|\badmonition__title\b|\btitle\b/i;
+
+/**
+ * Accent-bar color if `element` is a callout/admonition, else null. Docs sites render
+ * notes as web-component alerts (`<rh-alert>`) or `class="admonition note"` blocks whose
+ * box (fill, accent bar, icon) is drawn in shadow DOM or an external stylesheet — the
+ * light-DOM host reads as transparent, so the note would otherwise flatten to plain text.
+ */
+export function admonitionAccent(element: Element): string | null {
+  const tag = element.name.toLowerCase();
+  const cls = element.attribs?.class ?? "";
+  if (!ADMONITION_TAGS.has(tag) && !ADMONITION_CLASS.test(cls)) return null;
+  const signal = `${cls} ${element.attribs?.state ?? ""}`;
+  for (const [re, bar] of ADMONITION_BARS) if (re.test(signal)) return bar;
+  return ADMONITION_DEFAULT_BAR;
+}
+
+/** True for the title element inside an admonition (bolded like the rendered label). */
+export function isAdmonitionHeader(element: Element): boolean {
+  const cls = element.attribs?.class ?? "";
+  if (cls && ADMONITION_HEADER_CLASS.test(cls)) {
+    const parent = element.parent && element.parent.type === "tag" ? (element.parent as Element) : undefined;
+    // `title` alone is too broad — only treat it as a header inside an admonition.
+    if (/\badmonition/i.test(cls)) return true;
+    return parent ? admonitionAccent(parent) !== null : false;
+  }
+  return false;
+}
+
 export function layoutFromElement(
   element: Element,
   resolver: StyleResolver = INLINE_STYLE_RESOLVER,
 ): BlockLayout {
-  return cssToBlockLayout(resolver.getCss(element));
+  const layout = cssToBlockLayout(resolver.getCss(element));
+  // A callout already carrying a real background (light-DOM styled) keeps it; only
+  // synthesize a box when the styling is inaccessible (shadow DOM / external sheet).
+  if (layout.shading?.fill) return layout;
+  const bar = admonitionAccent(element);
+  if (!bar) return layout;
+  const padTop = layout.paddingTop ?? pxToTwips(10);
+  const padBottom = layout.paddingBottom ?? pxToTwips(10);
+  const padLeft = layout.paddingLeft ?? pxToTwips(12);
+  const padRight = layout.paddingRight ?? pxToTwips(12);
+  const accent: BlockBorderSide = { color: bar, size: 24, space: 6 };
+  return {
+    ...layout,
+    shading: { fill: "F4F4F5", color: "auto" },
+    borders: { ...(layout.borders ?? {}), left: layout.borders?.left ?? accent },
+    paddingTop: padTop,
+    paddingBottom: padBottom,
+    paddingLeft: padLeft,
+    paddingRight: padRight,
+    spacingBefore: sumTwips(padTop, layout.marginTop),
+    spacingAfter: sumTwips(padBottom, layout.marginBottom),
+    indentLeft: sumTwips(layout.marginLeft, padLeft),
+    indentRight: sumTwips(layout.marginRight, padRight),
+  };
 }
 
 /** Nearest `font-family` up the ancestor chain (CSS inheritance), if any. */
@@ -634,6 +705,9 @@ export function typographyFromBlockElement(
     const font = inheritedFontFamily(element, resolver);
     if (font) typography.font = font;
   }
+  // The admonition label ("Note"/"Warning") is bold in the rendered box; its light-DOM
+  // element carries no weight of its own (styled in shadow DOM), so bold it here.
+  if (!typography.bold && isAdmonitionHeader(element)) typography.bold = true;
   return typography;
 }
 
