@@ -396,10 +396,34 @@ export function isHiddenCss(css: ParsedCss): boolean {
   return false;
 }
 
+/** ARIA roles that mark an element as transient overlay content (dialog/tooltip). */
+const OVERLAY_ROLES = new Set(["dialog", "alertdialog", "tooltip"]);
+
+/**
+ * Transient overlay content — dialogs, tooltips, popovers — shown only on a user action,
+ * so it is not part of the linear document and must not be rendered. Two ways it leaks:
+ * a modal holds a duplicate (a figure's "expand" dialog with a second copy of the image),
+ * or a tooltip's label bleeds into the text (a heading's copy-link tooltip renders as
+ * "Copy link"). Native `<dialog>` without `open` is already `display:none` on the computed
+ * path, but overlay *web components* (`<rh-dialog>`, `<rh-tooltip>`, `<sl-popover>`) hide
+ * inside shadow DOM, so their light-DOM host looks visible — match them by the
+ * custom-element `-dialog`/`-modal`/`-tooltip`/`-popover` suffix, plus ARIA.
+ */
+export function isOverlayElement(element: Element): boolean {
+  const tag = element.name.toLowerCase();
+  if (tag === "dialog" && element.attribs?.open === undefined) return true;
+  if (/-(?:dialog|modal|tooltip|popover)$/.test(tag)) return true;
+  const role = element.attribs?.role?.toLowerCase();
+  if (role && OVERLAY_ROLES.has(role)) return true;
+  if (element.attribs?.["aria-modal"] === "true") return true;
+  return false;
+}
+
 export function isHiddenElement(
   element: Element,
   resolver: StyleResolver = INLINE_STYLE_RESOLVER,
 ): boolean {
+  if (isOverlayElement(element)) return true;
   return isHiddenCss(resolver.getCss(element));
 }
 

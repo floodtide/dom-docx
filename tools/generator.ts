@@ -568,6 +568,34 @@ const EDGE_TEST_CASES: TestCase[] = [
     `,
   },
   {
+    name: "tooltip-skipped",
+    description: "Heading permalink tooltip (`role=tooltip`) is skipped, not rendered as text",
+    // A heading's copy-link control is a tooltip web component; its label ("Copy link")
+    // is transient hover content that leaked into the heading text. The stylesheet hides
+    // the tooltip in the browser; the inline path ignores `<style>` and drops it via the
+    // overlay/tooltip rule — both show just the heading. A regression appends "Copy link".
+    html: `
+      <style>[role="tooltip"] { display: none; }</style>
+      <h2 style="font-size:18px">2.2. udev device naming rules <span role="tooltip">Copy link</span></h2>
+      <p>The device naming rules are defined in configuration files under /etc/udev/rules.d.</p>
+    `,
+  },
+  {
+    name: "modal-dialog-skipped",
+    description: "Figure with a click-to-expand `<dialog>` holding a duplicate image — modal is skipped",
+    // Docs sites pair a visible thumbnail with an "expand" modal holding a full-size copy
+    // of the same image. The modal is overlay content (hidden until triggered), so its
+    // duplicate must not render inline. A closed native `<dialog>` is hidden in the browser
+    // too, so both show a single image; a regression that renders modal content would emit
+    // the image twice and push the caption down.
+    html: `
+      <p>The diagram below shows the high-level layout.</p>
+      <p><img src="${TEST_IMAGE_260x140}" width="${TEST_IMAGE_W}" height="${TEST_IMAGE_H}" alt="High-level layout diagram"></p>
+      <dialog><img src="${TEST_IMAGE_260x140}" width="520" height="280" alt="High-level layout diagram, full size"></dialog>
+      <p>Figure 1. High-level layout.</p>
+    `,
+  },
+  {
     name: "ordered-list-lower-alpha",
     description: "`<ol list-style-type:lower-alpha>`",
     html: `

@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+
+### Fixed
+
+- **Transient overlay content (dialogs, tooltips, popovers) is no longer rendered.** Overlay content shown only on a user action is not part of the linear document, yet two kinds leaked in: a figure's click-to-expand modal held a full-size **duplicate** of the same image (two `<img>`, both emitted), and a heading's copy-link **tooltip** bled its label into the text (headings ended in "Copy link"). Native `<dialog>` without `open`, overlay web components matched by the `-dialog`/`-modal`/`-tooltip`/`-popover` custom-element suffix (`<rh-dialog>`, `<rh-tooltip>`, `<sl-popover>`), and `role="dialog"`/`role="alertdialog"`/`role="tooltip"`/`aria-modal="true"` are now skipped. Suite cases: `modal-dialog-skipped`, `tooltip-skipped`.
+
 ## 0.1.8
 
 ### Fixed
