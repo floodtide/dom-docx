@@ -32,21 +32,28 @@ Playwright is also used by the **dev test harness** (not required to use the lib
 
 LibreOffice is **not** needed to convert. It is only used for the visual test harness.
 
-## CLI
+## Quick start
 
-Convert a file without writing any code:
+### Node
 
-```bash
-npx dom-docx input.html -o output.docx
-npx dom-docx input.html                      # writes input.docx next to it
-cat fragment.html | npx dom-docx - -o -      # stdin → binary stdout (pipelines)
-npx dom-docx input.html -s computed          # stylesheet/class HTML (needs playwright installed)
-npm install -g dom-docx                      # optional: install globally, then run "dom-docx" without npx
+```typescript
+import { writeFile } from "node:fs/promises";
+import { convertHtmlToDocx } from "dom-docx";
+
+const html = `
+<h1 style="color:#1a1a2e">Quarterly Report</h1>
+<p>Revenue grew <strong>12%</strong> year over year.</p>
+<ul>
+  <li>North America</li>
+  <li>EMEA</li>
+</ul>
+`;
+
+const docx = await convertHtmlToDocx(html);
+await writeFile("output.docx", docx);
 ```
 
-Input is a **body HTML fragment**, same as the API. `--help` for all options.
-
-## Quick start
+Pass a **body fragment only** (no `<!DOCTYPE>` / `<html>` / `<body>` required). Defaults: US Letter, 1″ margins, Arial 10.5pt body text.
 
 ### Browser
 
@@ -72,26 +79,19 @@ a.click();
 
 No Playwright, no Node. This runs entirely in the user's tab. See [Browser bundle](#browser-bundle) below.
 
-### Node
+### CLI
 
-```typescript
-import { writeFile } from "node:fs/promises";
-import { convertHtmlToDocx } from "dom-docx";
+Convert a file without writing any code:
 
-const html = `
-<h1 style="color:#1a1a2e">Quarterly Report</h1>
-<p>Revenue grew <strong>12%</strong> year over year.</p>
-<ul>
-  <li>North America</li>
-  <li>EMEA</li>
-</ul>
-`;
-
-const docx = await convertHtmlToDocx(html);
-await writeFile("output.docx", docx);
+```bash
+npx dom-docx input.html -o output.docx
+npx dom-docx input.html                      # writes input.docx next to it
+cat fragment.html | npx dom-docx - -o -      # stdin → binary stdout (pipelines)
+npx dom-docx input.html -s computed          # stylesheet/class HTML (needs playwright installed)
+npm install -g dom-docx                      # optional: install globally, then run "dom-docx" without npx
 ```
 
-Pass a **body fragment only** (no `<!DOCTYPE>` / `<html>` / `<body>` required). Defaults: US Letter, 1″ margins, Arial 10.5pt body text.
+Input is a **body HTML fragment**, same as the API. `--help` for all options.
 
 ## v0.1.x capability
 
