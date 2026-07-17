@@ -295,6 +295,7 @@ Prerequisites for the harness: **LibreOffice** (`soffice`) for PDF rasterization
 ## Related projects
 
 - **[canvas-word](https://github.com/Forevka/canvas-word)** — a Word-style editor for the browser that can open and edit the `.docx` files dom-docx generates. Canvas-rendered, page-accurate, MIT. [Live demo](https://doc-editor.forevka.dev/).
+- **[hmr-serve](https://github.com/floodtide/hmr-serve)** — point it at any folder and review HTML, Markdown, images, and more live in the browser with Vite HMR (file tree + content pane, or `--no-nav` like `serve`).
 
 ## License
 
