@@ -8,7 +8,8 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- **Default text color now uses Word's `auto` instead of a forced near-black.** Text with no explicit CSS color previously had `#111111` stamped on every run; it now omits the run color so Word/LibreOffice apply their default (which renders black, and adapts to the background). This is more native and fixes a latent bug: a dark-background block whose text had no explicit color rendered dark-on-dark (invisible) — `auto` renders it light-on-dark. Hyperlinks keep their link color. (From a community patch.)
+- **Default text color now uses Word's `auto` instead of a forced near-black.** Text with no explicit CSS color previously had `#111111` stamped on every run; it now omits the run color so Word/LibreOffice apply their default (which renders black, and adapts to the background). This is more native and fixes a latent bug: a dark-background block whose text had no explicit color rendered dark-on-dark (invisible) — `auto` renders it light-on-dark. Hyperlinks keep their link color. (Thanks to Alexander Wilms
+  for the bug fixes and improvements)
 
 ### Fixed
 

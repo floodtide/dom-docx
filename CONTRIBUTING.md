@@ -46,6 +46,30 @@ npm run score:suite:strict
 npm run docs:sync
 ```
 
+#### Did my change regress anything? (the baseline diff)
+
+You don't grade 40+ scores by eye, and you don't set anything up. Every `score:suite` run ends with a **`vs baseline`** line that tells you what your change moved:
+
+```
+━━━ vs baseline · 44 cases · avg 96.37 ━━━
+  ✗ typography-colors  90.35 → 89.10  (-1.25)
+  1 regressed · 0 improved · 43 unchanged (±0.5)
+```
+
+When nothing moves past ±0.5 you get a one-liner under the same header: `✓ no changes`.
+
+How it works, like snapshot tests:
+
+- **First full run** on a clean checkout has no baseline, so it **auto-saves that run as the baseline** — i.e. `main`'s scores on _your_ machine. (A `SUITE_ONLY` run won't set the baseline; run the full suite once.)
+- **Every later run** prints only what changed vs that baseline: `✓ no changes` if nothing moved past ±0.5, otherwise just the regressed/improved cases. The per-case scorecard already printed above it, so this stays a short summary, not a second wall of numbers.
+- It's **informational** — it never fails the run or the build. A regression here is a signal to look, not an error.
+
+Typical loop: run `score:suite` once on `main` (sets your baseline), make your change, run it again, read the `vs baseline` line. Because visual scores depend on your OS / fonts / LibreOffice version, this is a **same-machine** check — the numbers in the committed `docs/TEST-SCORES.md` are the shared reference for the current champion scores, not something to diff against across machines.
+
+- **`score:pin`** — deliberately re-set the baseline to the current run. Rare and maintainer-facing: press it after **accepting** a batch of changes whose new scores are the intended new bar (including any regression you've decided is a fair trade-off), or to reset your baseline to a fresh `main`. Everyday contributors never need it — the baseline auto-establishes and the diff auto-prints. (Deleting `output/suite/baseline.json` and re-running does the same thing.)
+
+The baseline (`output/suite/baseline.json`) is gitignored; nothing to commit.
+
 ### 2. Comparative scoring — periodic, feeds docs via `docs:sync`, not part of every dev loop
 
 - **`score:benchmark`** — scores `html-to-docx` and `@turbodocx/html-to-docx` through the _identical_ harness (same cases, same scoring) so dom-docx's numbers are directly comparable. Reads dom-docx's own baseline from `output/suite/results.json` to compute deltas — run `score:suite` first. Takes an optional arg to run just one library.

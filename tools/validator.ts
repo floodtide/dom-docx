@@ -33,6 +33,7 @@ import {
 import type { ListMarkerFidelityDetail } from "./list-marker-fidelity.js";
 import { captureEnvironment, type HarnessEnvironment } from "./environment.js";
 import { SUITE_OUTPUT } from "./output-paths.js";
+import { printBaselineDiff } from "./score-diff.js";
 
 const OUTPUT_DIR = SUITE_OUTPUT;
 const STRICT_VISUAL = process.argv.includes("--strict-visual");
@@ -482,6 +483,7 @@ async function main(): Promise<void> {
 
     const payload = await writeResultsJson(results, LOOP_MODE, totalCaseCount, environment);
     printScorecard(results, payload.suite, LOOP_MODE);
+    await printBaselineDiff();
 
     const hardFailures = results.filter((r) => !r.xmlPassed || r.error);
     const visualFailures = results.filter((r) => (r.mismatchedPixels ?? 0) > 0);
