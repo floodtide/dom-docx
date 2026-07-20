@@ -133,9 +133,9 @@ function prependPendingSpace(
   return ` ${text}`;
 }
 
-function markPendingSpace(state: InlineRunState, runs: ParagraphChild[]): void {
+function markPendingSpace(state: InlineRunState, _runs: ParagraphChild[]): void {
   if (state.afterLineBreak) return;
-  if (state.leadingTextDone && runs.length > 0) {
+  if (state.leadingTextDone) {
     state.needsSpaceBeforeNext = true;
   }
 }
