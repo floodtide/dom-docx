@@ -1,14 +1,11 @@
 import {
-  AlignmentType,
   Document,
   Footer,
   Header,
   PageBreak,
-  PageNumber,
   Packer,
   PageOrientation,
   Paragraph,
-  TextRun,
   convertInchesToTwip,
   type FileChild,
 } from "docx";
@@ -16,7 +13,7 @@ import * as cheerio from "cheerio";
 import type { CheerioAPI } from "cheerio";
 import { unzipSync, zipSync } from "fflate";
 import { BODY_FONT, BODY_FONT_HALF_POINTS, NUMBERING_CONFIG, PAGE_MARGIN_TWIPS } from "./constants.js";
-import { patchDocumentXml, patchNumberingXml } from "./ooxml-patch.js";
+import { patchDocumentXml, patchFldSimple, patchNumberingXml } from "./ooxml-patch.js";
 import { applyImageResolver, hasUnresolvedSrc, resetImageDocPrIds, type ImageResolver } from "./image.js";
 import { INLINE_STYLE_RESOLVER, type StyleResolver } from "./style-resolver.js";
 import { htmlToDocxBlocks } from "./visitor.js";
@@ -86,8 +83,16 @@ export interface DocumentConfig {
   headerHtml?: string;
   /** HTML fragment rendered as the page footer. */
   footerHtml?: string;
-  /** Append a centered `Page N` field to the footer (created if `footerHtml` is absent). */
-  pageNumber?: boolean;
+  /**
+   * Append a page-number paragraph to the footer (created if `footerHtml` is absent).
+   * - `true` — shorthand for `"Page {page}"`
+   * - `string` — template with `{page}` (current page) and/or `{pages}` (total pages),
+   *   e.g. `"{page} / {pages}"` or `"Seite {page} von {pages}"`.
+   *   Wrap in HTML for alignment/formatting: `'<p style="text-align:right;font-weight:bold">{page}/{pages}</p>'`
+   *
+   * The `{page}` / `{pages}` tokens also work anywhere inside `footerHtml` and `headerHtml`.
+   */
+  pageNumber?: boolean | string;
   /** Document language (spell-check locale), e.g. `"en-US"`, `"ar-SA"`. */
   lang?: string;
   /** Text direction; `"rtl"` sets right-to-left paragraphs. */
@@ -371,17 +376,17 @@ function resolveSectionPageSize(
     : { width: resolved.pageSize.width, height: resolved.pageSize.height };
 }
 
-/** Convert a standalone HTML fragment (header/footer) to DOCX blocks via the inline resolver. */
-function fragmentToBlocks(html: string, sizeHalfPoints: number): FileChild[] {
-  const $ = cheerio.load(`<body>${html.trim()}</body>`, { xml: false });
-  return htmlToDocxBlocks($, INLINE_STYLE_RESOLVER, sizeHalfPoints);
+/** Replace `{page}` / `{pages}` tokens with data-attribute spans the inline converter understands. */
+function injectFieldTokens(html: string): string {
+  return html
+    .replace(/\{page\}/gi, '<span data-docx-field="PAGE"></span>')
+    .replace(/\{pages\}/gi, '<span data-docx-field="NUMPAGES"></span>');
 }
 
-function pageNumberParagraph(): Paragraph {
-  return new Paragraph({
-    alignment: AlignmentType.CENTER,
-    children: [new TextRun("Page "), new TextRun({ children: [PageNumber.CURRENT] })],
-  });
+/** Convert a standalone HTML fragment (header/footer) to DOCX blocks via the inline resolver. */
+function fragmentToBlocks(html: string, sizeHalfPoints: number): FileChild[] {
+  const $ = cheerio.load(`<body>${injectFieldTokens(html.trim())}</body>`, { xml: false });
+  return htmlToDocxBlocks($, INLINE_STYLE_RESOLVER, sizeHalfPoints);
 }
 
 /**
@@ -411,11 +416,21 @@ function buildCover(config: DocumentConfig | undefined, resolved: ResolvedConfig
 
 function buildFooter(config: DocumentConfig | undefined, resolved: ResolvedConfig): Footer | undefined {
   const hasFooterHtml = Boolean(config?.footerHtml);
-  if (!hasFooterHtml && !config?.pageNumber) return undefined;
+  const pnTemplate =
+    config?.pageNumber === true
+      ? "Page {page}"
+      : typeof config?.pageNumber === "string"
+        ? config.pageNumber
+        : null;
+  if (!hasFooterHtml && pnTemplate === null) return undefined;
   const children: FileChild[] = hasFooterHtml
     ? fragmentToBlocks(config!.footerHtml!, resolved.fontHalfPoints)
     : [];
-  if (config?.pageNumber) children.push(pageNumberParagraph());
+  if (pnTemplate !== null) {
+    const isPlainTemplate = !pnTemplate.trimStart().startsWith("<");
+    const html = isPlainTemplate ? `<p style="text-align:center">${pnTemplate}</p>` : pnTemplate;
+    children.push(...fragmentToBlocks(html, resolved.fontHalfPoints));
+  }
   return new Footer({ children });
 }
 
@@ -507,12 +522,80 @@ async function packDocxToUint8Array(
 
 function patchPackedDocx(packed: Uint8Array): Uint8Array {
   const files = unzipSync(packed);
-  const documentXml = new TextDecoder().decode(files["word/document.xml"]);
-  files["word/document.xml"] = new TextEncoder().encode(patchDocumentXml(documentXml));
+  const dec = new TextDecoder();
+  const enc = new TextEncoder();
+
+  files["word/document.xml"] = enc.encode(patchDocumentXml(dec.decode(files["word/document.xml"])));
   if (files["word/numbering.xml"]) {
-    const numberingXml = new TextDecoder().decode(files["word/numbering.xml"]);
-    files["word/numbering.xml"] = new TextEncoder().encode(patchNumberingXml(numberingXml));
+    files["word/numbering.xml"] = enc.encode(patchNumberingXml(dec.decode(files["word/numbering.xml"])));
   }
+
+  // Convert w:fldSimple in footer/header XMLs to proper 5-run complex field structure,
+  // then promote inline rPr on field runs to named character styles so LibreOffice's
+  // DOCX importer applies the formatting to text:page-number / text:page-count elements.
+  // (LO ignores inline rPr on fldChar runs; it does respect w:rStyle named styles.)
+  const chromeKeys = Object.keys(files).filter((k) => /^word\/(footer|header)\d*\.xml$/.test(k));
+  if (chromeKeys.length === 0) return zipSync(files);
+
+  // First pass: apply patchFldSimple and collect unique rPr sets from begin fldChar runs.
+  const compactToId = new Map<string, string>();
+  const idToRpr = new Map<string, string>();
+  let counter = 0;
+  const patchedChrome = new Map<string, string>();
+  for (const key of chromeKeys) {
+    const xml = patchFldSimple(dec.decode(files[key]));
+    patchedChrome.set(key, xml);
+    for (const m of xml.matchAll(/<w:rPr>((?:[^<]|<(?!\/w:rPr>))*)<\/w:rPr><w:fldChar w:fldCharType="begin"/g)) {
+      const rPr = m[1];
+      const compact = rPr.replace(/\s+/g, "");
+      if (compact && !compactToId.has(compact)) {
+        const id = `FldS${counter++}`;
+        compactToId.set(compact, id);
+        idToRpr.set(id, rPr);
+      }
+    }
+  }
+
+  if (idToRpr.size === 0) {
+    for (const [key, xml] of patchedChrome) files[key] = enc.encode(xml);
+    return zipSync(files);
+  }
+
+  // Second pass: replace inline rPr with w:rStyle on begin runs and display runs.
+  const rStyleRpr = (rPr: string): string => {
+    const id = compactToId.get(rPr.replace(/\s+/g, ""));
+    return id ? `<w:rPr><w:rStyle w:val="${id}"/></w:rPr>` : `<w:rPr>${rPr}</w:rPr>`;
+  };
+  for (const [key, xml] of patchedChrome) {
+    let patched = xml;
+    patched = patched.replace(
+      /<w:rPr>((?:[^<]|<(?!\/w:rPr>))*)<\/w:rPr>(<w:fldChar w:fldCharType="begin")/g,
+      (_, rPr, fldChar) => `${rStyleRpr(rPr)}${fldChar}`,
+    );
+    patched = patched.replace(
+      /(<w:r>)<w:rPr>((?:[^<]|<(?!\/w:rPr>))*)<\/w:rPr>(<w:t[^>]*>[\s\S]*?<\/w:t><\/w:r>(?=<w:r><w:fldChar w:fldCharType="end"))/g,
+      (_, open, rPr, rest) => `${open}${rStyleRpr(rPr)}${rest}`,
+    );
+    files[key] = enc.encode(patched);
+  }
+
+  // Inject the character style definitions into word/styles.xml.
+  if (files["word/styles.xml"]) {
+    const charStyles = [...idToRpr.entries()]
+      .map(
+        ([id, rPr]) =>
+          `<w:style w:type="character" w:customStyle="1" w:styleId="${id}">` +
+          `<w:name w:val="${id}"/>` +
+          `<w:basedOn w:val="DefaultParagraphFont"/>` +
+          `<w:rPr>${rPr}</w:rPr>` +
+          `</w:style>`,
+      )
+      .join("");
+    files["word/styles.xml"] = enc.encode(
+      dec.decode(files["word/styles.xml"]).replace("</w:styles>", `${charStyles}</w:styles>`),
+    );
+  }
+
   return zipSync(files);
 }
 

@@ -1,10 +1,19 @@
 import {
   ExternalHyperlink,
   InternalHyperlink,
+  SimpleField,
   TextRun,
   UnderlineType,
   type ParagraphChild,
 } from "docx";
+
+/** w:fldSimple with a styled cached-value run so LibreOffice (and Word) respect the rPr. */
+class StyledSimpleField extends SimpleField {
+  constructor(instruction: string, cachedRun: TextRun) {
+    super(` ${instruction} `);
+    this.root.push(cachedRun);
+  }
+}
 import type { AnyNode, Element } from "domhandler";
 import { internalAnchorFromHref, wrapWithBookmark } from "./bookmarks.js";
 import { BODY_FONT_HALF_POINTS, HYPERLINK_COLOR } from "./constants.js";
@@ -183,6 +192,23 @@ export function collectInlineRunsFromNodes(
     if (isHiddenElement(node, styleResolver)) continue;
 
     const tag = node.name.toLowerCase();
+
+    // {page} / {pages} tokens injected by injectFieldTokens() in build-docx.ts
+    if (tag === "span" && node.attribs?.["data-docx-field"]) {
+      const field = node.attribs["data-docx-field"];
+      if (field === "PAGE" || field === "NUMPAGES") {
+        const runOpts = typographyToTextRunOptions(inherited, defaultSize);
+        // Use w:fldSimple with a styled cached-value run so the rPr is preserved
+        // after LibreOffice / Word update the field (plain TextRun+children packs
+        // begin/instrText/separate/end into one run with no display value, which
+        // causes apps to ignore the rPr when computing the displayed number).
+        runs.push(new StyledSimpleField(field, new TextRun({ text: "1", ...runOpts })));
+        state.leadingTextDone = true;
+        state.needsSpaceBeforeNext = false;
+      }
+      continue;
+    }
+
     if (tag === "br") {
       state.needsSpaceBeforeNext = false;
       state.afterLineBreak = true;

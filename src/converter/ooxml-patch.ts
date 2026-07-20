@@ -67,6 +67,35 @@ export function patchLeadingBlankSectionPrefix(documentXml: string): string {
   );
 }
 
+/**
+ * Replace `w:fldSimple` page/total-pages fields with the proper 5-run complex
+ * field structure (begin → instrText → separate → display run → end).
+ *
+ * `w:fldSimple` is simpler to emit but LibreOffice's OOXML importer drops the
+ * inner run's `w:rPr` — it creates a bare `text:page-number` / `text:page-count`
+ * element with no character style. Word-style 5-run complex fields preserve the
+ * run properties: LO applies the `begin` run's `w:rPr` as the character style of
+ * the imported field element.
+ */
+export function patchFldSimple(xml: string): string {
+  return xml.replace(/<w:fldSimple w:instr="([^"]+)">([\s\S]*?)<\/w:fldSimple>/g, (_, instr, inner) => {
+    const rPrMatch = inner.match(/<w:rPr>([\s\S]*?)<\/w:rPr>/);
+    const rPr = rPrMatch ? `<w:rPr>${rPrMatch[1]}</w:rPr>` : "";
+    const tMatch = inner.match(/<w:t[^>]*>([\s\S]*?)<\/w:t>/);
+    const cachedVal = tMatch ? tMatch[1] : "1";
+    const instrTrimmed = instr.trim();
+    return (
+      `<w:r>${rPr}<w:fldChar w:fldCharType="begin" w:dirty="1"/></w:r>` +
+      `<w:r><w:instrText xml:space="preserve"> ${instrTrimmed} </w:instrText></w:r>` +
+      `<w:r><w:fldChar w:fldCharType="separate"/></w:r>` +
+      `<w:r>${rPr}<w:t>${cachedVal}</w:t></w:r>` +
+      `<w:r><w:fldChar w:fldCharType="end"/></w:r>`
+    );
+  });
+}
+
 export function patchDocumentXml(documentXml: string): string {
-  return patchLeadingBlankSectionPrefix(patchTableCellSpacingOrder(patchShadedParagraphVerticalAlign(documentXml)));
+  return patchLeadingBlankSectionPrefix(
+    patchFldSimple(patchTableCellSpacingOrder(patchShadedParagraphVerticalAlign(documentXml))),
+  );
 }
