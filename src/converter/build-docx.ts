@@ -117,8 +117,22 @@ const PAGE_PRESETS_TWIPS = {
   a4: { width: 11906, height: 16838 },
 } as const;
 
+type Orientation = "portrait" | "landscape";
+
+interface PageRules {
+  defaultOrientation?: Orientation;
+  namedOrientations: Record<string, Orientation>;
+  classToPage: Record<string, string>;
+}
+
+interface BodySection {
+  orientation: Orientation | undefined;
+  children: FileChild[];
+}
+
 interface ResolvedConfig {
-  size: { width: number; height: number; orientation?: (typeof PageOrientation)[keyof typeof PageOrientation] };
+  pageSize: { width: number; height: number };
+  defaultOrientation: Orientation | undefined;
   margin: { top: number; right: number; bottom: number; left: number };
   font: string;
   fontHalfPoints: number;
@@ -133,7 +147,179 @@ interface ResolvedConfig {
   rtl: boolean;
 }
 
-function resolveDocumentConfig(config?: DocumentConfig): ResolvedConfig {
+function toInches(value: number, unit: string): number | null {
+  switch (unit.toLowerCase()) {
+    case "in":
+      return value;
+    case "cm":
+      return value / 2.54;
+    case "mm":
+      return value / 25.4;
+    case "q":
+      return value / 101.6;
+    case "pt":
+      return value / 72;
+    case "pc":
+      return value / 6;
+    case "px":
+      return value / 96;
+    default:
+      return null;
+  }
+}
+
+function parseLengthToken(token: string): number | null {
+  const m = token.trim().toLowerCase().match(/^([0-9]*\.?[0-9]+)(in|cm|mm|q|pt|pc|px)$/);
+  if (!m) return null;
+  const numeric = Number(m[1]);
+  if (!Number.isFinite(numeric)) return null;
+  return toInches(numeric, m[2]!);
+}
+
+function inferOrientationFromPageSizeValue(value: string): Orientation | null {
+  const lower = value.trim().toLowerCase();
+  if (lower.includes("landscape")) return "landscape";
+  if (lower.includes("portrait")) return "portrait";
+  const tokens = lower.split(/\s+/).filter(Boolean);
+  const lengthTokens = tokens.filter((token) => parseLengthToken(token) !== null);
+  if (lengthTokens.length < 2) return null;
+  const widthIn = parseLengthToken(lengthTokens[0]!);
+  const heightIn = parseLengthToken(lengthTokens[1]!);
+  if (widthIn === null || heightIn === null || widthIn === heightIn) return null;
+  return widthIn > heightIn ? "landscape" : "portrait";
+}
+
+function parseCssPageRules(html: string): PageRules {
+  const namedOrientations: Record<string, Orientation> = {};
+  const classToPage: Record<string, string> = {};
+  let defaultOrientation: Orientation | undefined;
+  const styleBlocks = [...html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)].map((match) => match[1]!);
+  for (const cssText of styleBlocks) {
+    const pageRulePattern = /@page\s*([^\{]*)\{([\s\S]*?)\}/gi;
+    for (const match of cssText.matchAll(pageRulePattern)) {
+      const selector = (match[1] ?? "").trim();
+      const body = match[2] ?? "";
+      const sizeDecl = body.match(/(?:^|[;\s])size\s*:\s*([^;}]*)/i);
+      if (!sizeDecl?.[1]) continue;
+      const inferred = inferOrientationFromPageSizeValue(sizeDecl[1]);
+      if (!inferred) continue;
+      if (!selector || selector.startsWith(":")) {
+        if (!defaultOrientation) defaultOrientation = inferred;
+        continue;
+      }
+      const pageName = selector.split(":")[0]?.trim().toLowerCase();
+      if (pageName) namedOrientations[pageName] = inferred;
+    }
+    // Class-based section mapping (e.g. `div.WordSection2 { page: WordSection2; }`).
+    for (const ruleMatch of cssText.matchAll(/([^{}]+)\{([\s\S]*?)\}/g)) {
+      const selectorList = (ruleMatch[1] ?? "").trim();
+      const body = ruleMatch[2] ?? "";
+      if (!selectorList || selectorList.startsWith("@")) continue;
+      const pageDecl = body.match(/(?:^|[;\s])page\s*:\s*([^;}]*)/i);
+      if (!pageDecl?.[1]) continue;
+      const pageTarget = pageDecl[1].trim().replace(/^['"]|['"]$/g, "").toLowerCase();
+      if (!pageTarget || pageTarget === "auto") continue;
+      for (const selector of selectorList.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean)) {
+        const classMatch = selector.match(/(?:^|\s|>)(?:[a-z0-9_-]+\.)?([a-z0-9_-]+)/i);
+        const dotIdx = selector.indexOf(".");
+        if (dotIdx === -1 || !classMatch?.[1]) continue;
+        classToPage[classMatch[1].toLowerCase()] = pageTarget;
+      }
+    }
+  }
+  return { defaultOrientation, namedOrientations, classToPage };
+}
+
+function inlinePageName(styleValue: string | undefined): string | undefined {
+  if (!styleValue) return undefined;
+  const pageDecl = styleValue
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => /^page\s*:/i.test(part));
+  if (!pageDecl) return undefined;
+  const [, value = ""] = pageDecl.split(":", 2);
+  const page = value.trim().toLowerCase();
+  if (!page || page === "auto") return undefined;
+  return page;
+}
+
+function pageNameToOrientation(pageName: string | undefined, rules: PageRules): Orientation | undefined {
+  if (!pageName) return undefined;
+  if (pageName === "portrait" || pageName === "landscape") return pageName;
+  return rules.namedOrientations[pageName];
+}
+
+function classPageName(classAttr: string | undefined, rules: PageRules): string | undefined {
+  if (!classAttr) return undefined;
+  for (const className of classAttr.split(/\s+/).map((c) => c.trim().toLowerCase()).filter(Boolean)) {
+    const page = rules.classToPage[className];
+    if (page) return page;
+  }
+  return undefined;
+}
+
+/**
+ * Split the body's top-level nodes into contiguous chunks that share a page
+ * orientation (via inline `style="page:…"` or class-mapped `page:` CSS), then
+ * convert each chunk to DOCX blocks. Each chunk becomes its own DOCX section.
+ */
+function buildBodySections(
+  $: CheerioAPI,
+  styleResolver: StyleResolver,
+  fontHalfPoints: number,
+  baseOrientation: Orientation | undefined,
+  pageRules: PageRules,
+  allowMixedOrientation: boolean,
+): BodySection[] {
+  const chunks: Array<{ orientation: Orientation | undefined; htmlParts: string[] }> = [
+    { orientation: baseOrientation, htmlParts: [] },
+  ];
+  let currentOrientation = baseOrientation;
+  for (const node of $("body").contents().toArray()) {
+    if (node.type === "tag" && node.name.toLowerCase() === "style") {
+      continue;
+    }
+    // Ignore formatting whitespace between top-level nodes so it does not
+    // become an empty paragraph/section in the generated DOCX.
+    if (node.type === "text" && !(node.data ?? "").trim()) {
+      continue;
+    }
+    let targetOrientation = currentOrientation;
+    if (allowMixedOrientation && node.type === "tag") {
+      const pageName = inlinePageName($(node).attr("style")) ?? classPageName($(node).attr("class"), pageRules);
+      const oriented = pageNameToOrientation(pageName, pageRules);
+      if (oriented) targetOrientation = oriented;
+    }
+    const rendered = $.html(node);
+    if (!rendered) continue;
+    const last = chunks.at(-1)!;
+    if (last.htmlParts.length && targetOrientation !== currentOrientation) {
+      chunks.push({ orientation: targetOrientation, htmlParts: [rendered] });
+    } else {
+      last.htmlParts.push(rendered);
+      last.orientation = targetOrientation;
+    }
+    currentOrientation = targetOrientation;
+  }
+  const sections: BodySection[] = [];
+  for (const chunk of chunks) {
+    const chunkHtml = chunk.htmlParts.join("").trim();
+    if (!chunkHtml) continue;
+    const chunk$ = cheerio.load(`<body>${chunkHtml}</body>`, { xml: false });
+    const children = htmlToDocxBlocks(chunk$, styleResolver, fontHalfPoints);
+    if (children.length === 0) continue;
+    sections.push({
+      orientation: chunk.orientation,
+      children,
+    });
+  }
+  return sections;
+}
+
+function resolveDocumentConfig(
+  config: DocumentConfig | undefined,
+  inferredOrientation: Orientation | undefined,
+): ResolvedConfig {
   const ps = config?.pageSize;
   const base =
     !ps || ps === "letter"
@@ -142,11 +328,7 @@ function resolveDocumentConfig(config?: DocumentConfig): ResolvedConfig {
         ? PAGE_PRESETS_TWIPS.a4
         : { width: convertInchesToTwip(ps.width), height: convertInchesToTwip(ps.height) };
 
-  // docx swaps width/height itself for landscape, so pass portrait dims + the flag.
-  const size =
-    config?.orientation === "landscape"
-      ? { width: base.width, height: base.height, orientation: PageOrientation.LANDSCAPE }
-      : { width: base.width, height: base.height };
+  const effectiveOrientation = config?.orientation ?? inferredOrientation;
 
   const m = config?.margins;
   const marginIn = (v: number | undefined): number =>
@@ -161,7 +343,8 @@ function resolveDocumentConfig(config?: DocumentConfig): ResolvedConfig {
   if (meta?.description) metadata.description = meta.description;
 
   return {
-    size,
+    pageSize: { width: base.width, height: base.height },
+    defaultOrientation: effectiveOrientation,
     margin: { top: marginIn(m?.top), right: marginIn(m?.right), bottom: marginIn(m?.bottom), left: marginIn(m?.left) },
     font: config?.defaultFont?.family ?? BODY_FONT,
     fontHalfPoints:
@@ -172,6 +355,20 @@ function resolveDocumentConfig(config?: DocumentConfig): ResolvedConfig {
     lang: config?.lang,
     rtl: config?.direction === "rtl",
   };
+}
+
+// docx swaps width/height itself for landscape, so pass portrait dims + the flag.
+function resolveSectionPageSize(
+  resolved: ResolvedConfig,
+  orientation: Orientation | undefined,
+): { width: number; height: number; orientation?: (typeof PageOrientation)[keyof typeof PageOrientation] } {
+  return orientation === "landscape"
+    ? {
+        width: resolved.pageSize.width,
+        height: resolved.pageSize.height,
+        orientation: PageOrientation.LANDSCAPE,
+      }
+    : { width: resolved.pageSize.width, height: resolved.pageSize.height };
 }
 
 /** Convert a standalone HTML fragment (header/footer) to DOCX blocks via the inline resolver. */
@@ -228,7 +425,7 @@ function buildHeader(config: DocumentConfig | undefined, resolved: ResolvedConfi
 }
 
 async function packDocxToUint8Array(
-  children: FileChild[],
+  bodySections: BodySection[],
   resolved: ResolvedConfig,
   chrome: { header?: Header; footer?: Footer },
   coverBlocks: FileChild[],
@@ -238,6 +435,11 @@ async function packDocxToUint8Array(
   // A cover page suppresses the header/footer/page-number on page 1 via Word's
   // "different first page" (titlePg + empty first-page header/footer).
   const suppressFirstChrome = coverBlocks.length > 0 && Boolean(chrome.header || chrome.footer);
+  const nonEmptySections = bodySections.filter((section) => section.children.length > 0);
+  const normalizedSections: BodySection[] =
+    nonEmptySections.length > 0
+      ? nonEmptySections
+      : [{ orientation: resolved.defaultOrientation, children: [] }];
   const doc = new Document({
     ...resolved.metadata,
     numbering: NUMBERING_CONFIG,
@@ -271,24 +473,32 @@ async function packDocxToUint8Array(
         },
       ],
     },
-    sections: [
-      {
-        properties: {
-          page: {
-            size: resolved.size,
-            margin: resolved.margin,
-          },
-          ...(suppressFirstChrome ? { titlePage: true } : {}),
+    sections: normalizedSections.map((section, idx) => ({
+      properties: {
+        page: {
+          size: resolveSectionPageSize(resolved, section.orientation),
+          margin: resolved.margin,
         },
-        ...(chrome.header
-          ? { headers: { default: chrome.header, ...(suppressFirstChrome ? { first: new Header({ children: [] }) } : {}) } }
-          : {}),
-        ...(chrome.footer
-          ? { footers: { default: chrome.footer, ...(suppressFirstChrome ? { first: new Footer({ children: [] }) } : {}) } }
-          : {}),
-        children: [...coverBlocks, ...tocSlotBlocks, ...children],
+        ...(idx === 0 && suppressFirstChrome ? { titlePage: true } : {}),
       },
-    ],
+      ...(chrome.header
+        ? {
+            headers:
+              idx === 0 && suppressFirstChrome
+                ? { default: chrome.header, first: new Header({ children: [] }) }
+                : { default: chrome.header },
+          }
+        : {}),
+      ...(chrome.footer
+        ? {
+            footers:
+              idx === 0 && suppressFirstChrome
+                ? { default: chrome.footer, first: new Footer({ children: [] }) }
+                : { default: chrome.footer },
+          }
+        : {}),
+      children: idx === 0 ? [...coverBlocks, ...tocSlotBlocks, ...section.children] : section.children,
+    })),
   });
 
   const blob = await Packer.toBlob(doc);
@@ -315,18 +525,27 @@ export async function buildDocxUint8Array(
   onWarning?: WarningHandler | null,
 ): Promise<Uint8Array> {
   resetImageDocPrIds();
-  const resolved = resolveDocumentConfig(documentConfig);
+  const pageRules = parseCssPageRules(html);
+  const inferredOrientation = documentConfig?.orientation ? undefined : pageRules.defaultOrientation;
+  const resolved = resolveDocumentConfig(documentConfig, inferredOrientation);
   const $ = cheerio.load(`<body>${html.trim()}</body>`, { xml: false });
   if (imageResolver) await applyImageResolver($, imageResolver);
   emitDegradationWarnings($, styleResolver, Boolean(imageResolver), resolveWarningHandler(onWarning));
-  const children = htmlToDocxBlocks($, styleResolver, resolved.fontHalfPoints);
+  const bodySections = buildBodySections(
+    $,
+    styleResolver,
+    resolved.fontHalfPoints,
+    resolved.defaultOrientation,
+    pageRules,
+    !documentConfig?.orientation,
+  );
   const chrome = {
     header: buildHeader(documentConfig, resolved),
     footer: buildFooter(documentConfig, resolved),
   };
   const coverBlocks = buildCover(documentConfig, resolved);
   const tocSlotBlocks = buildTocSlot(documentConfig, resolved);
-  const packed = await packDocxToUint8Array(children, resolved, chrome, coverBlocks, tocSlotBlocks);
+  const packed = await packDocxToUint8Array(bodySections, resolved, chrome, coverBlocks, tocSlotBlocks);
   return patchPackedDocx(packed);
 }
 

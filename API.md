@@ -173,7 +173,7 @@ interface ConvertOptions extends DocumentConfig {
 
 interface DocumentConfig {
   pageSize?: "letter" | "a4" | { width: number; height: number }; // custom in inches
-  orientation?: "portrait" | "landscape";
+  orientation?: "portrait" | "landscape"; // omitted: inferred from CSS @page rules, else portrait
   margins?: { top?: number; right?: number; bottom?: number; left?: number }; // inches
   defaultFont?: { family?: string; sizePt?: number };
   metadata?: {
@@ -197,7 +197,7 @@ interface DocumentConfig {
 |--------|------|---------|-------------|
 | `styleSource` | `"inline" \| "computed"` | `"inline"` | Which style resolution path to use. |
 | `pageSize` | `"letter" \| "a4" \| {width,height}` | `"letter"` | Page size. Custom `{width, height}` in **inches**. |
-| `orientation` | `"portrait" \| "landscape"` | `"portrait"` | Landscape swaps the page dimensions. |
+| `orientation` | `"portrait" \| "landscape"` | inferred / `"portrait"` | Landscape swaps the page dimensions. When omitted, orientation is **inferred from CSS `@page { size: … }` rules** in `<style>` blocks — including named pages with `page:` class mappings (`@page WordSection2 { size: 11in 8.5in }` + `div.WordSection2 { page: WordSection2 }`, the markup Word itself exports) and inline `style="page:landscape"` on top-level blocks — and the body is split into one DOCX section per contiguous orientation run. Setting `orientation` explicitly forces a single orientation and disables the inference. |
 | `margins` | `{top,right,bottom,left}` | `1` each | Page margins in **inches**; each side defaults to 1″. |
 | `defaultFont` | `{family?, sizePt?}` | Arial, 10.5 pt | Default body font family and size (points). Applies to text with no explicit CSS font. |
 | `metadata` | `{title,subject,creator,keywords[],description}` | — | Core document properties → `docProps/core.xml`. `keywords` is joined with `, `. |
@@ -476,6 +476,7 @@ Parsed from `style=""` (and from computed snapshots on the computed path):
 | `gap`, `row-gap`, `column-gap` | px |
 | `break-before`, `page-break-before` | `page`, `always`, `left`, `right` → page break before block |
 | `break-after`, `page-break-after` | same values → page break before **next** block sibling |
+| `page` | Named `@page` (or `portrait` / `landscape`) on a top-level block → starts a DOCX section in that orientation; ignored when the `orientation` option is set |
 
 **Page break examples** (inline styles or computed stylesheet):
 

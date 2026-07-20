@@ -6,6 +6,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+### Added
+
+- **Mixed portrait/landscape pages from CSS `@page` rules.** When no explicit `orientation` option is set, `@page { size: … }` declarations in `<style>` blocks set the default page orientation, and named pages with `page:` class mappings (`@page WordSection2 { size: 11in 8.5in }` + `div.WordSection2 { page: WordSection2 }` — the markup Word itself exports) or inline `style="page:landscape"` on a top-level block split the body into one DOCX section per contiguous orientation run, each with its own `w:pgSz`. An explicit `orientation` option still forces a single-orientation document and disables the inference. Guard: `npm run guard:mixed-orientation`.
+
 ### Fixed
 
 - **A leading blank paragraph + orphaned `<w:sectPr>`-only paragraph is stripped from the document body.** The docx library can open `<w:body>` in multi-section documents with an empty paragraph followed by a paragraph whose only content is a `<w:sectPr>`, which Word renders as a blank first page. The post-pack patcher now drops exactly that prefix; bodies that start with real content, and mid-body section breaks, pass through untouched. Guard: `npm run guard:section-prefix`.
