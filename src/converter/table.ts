@@ -10,6 +10,7 @@ import {
   TableRow,
   TextDirection,
   TextRun,
+  VerticalAlignTable,
   WidthType,
 } from "docx";
 import type { CheerioAPI } from "cheerio";
@@ -218,6 +219,30 @@ function cellTextDirection(
   }
 }
 
+function cellResolvedTextAlign(cell: ParsedCell, css: ParsedCss): string | undefined {
+  return css.textAlign ?? (cell.element.name.toLowerCase() === "th" ? "center" : undefined);
+}
+
+/** One line box wide — same strip width used for vertical column sizing. */
+function verticalGlyphStripWidthTwips(css: ParsedCss): number {
+  return Math.round((css.fontSize ?? BODY_FONT_HALF_POINTS) * 10 * 1.4);
+}
+
+/**
+ * Browsers center vertical labels across the narrow column (`text-align:center`
+ * on `<th>`). Word ignores w:jc for tbRl on the column axis — vAlign center on
+ * the cell is the closest native hook.
+ */
+function cellTableVerticalAlign(
+  cell: ParsedCell,
+  styleResolver: StyleResolver,
+): (typeof VerticalAlignTable)[keyof typeof VerticalAlignTable] | undefined {
+  const css = resolveCellCss(cell, styleResolver);
+  if (!cellTextDirection(css)) return undefined;
+  if (cellResolvedTextAlign(cell, css) === "center") return VerticalAlignTable.CENTER;
+  return undefined;
+}
+
 function elementPlainText(element: Element): string {
   const parts: string[] = [];
   function walk(nodes: AnyNode[]): void {
@@ -277,7 +302,7 @@ function estimateCellContentWidthTwips(
   // height instead of the column width.
   const css = resolveCellCss(cell, styleResolver);
   if (cellTextDirection(css)) {
-    return padX + Math.round((css.fontSize ?? BODY_FONT_HALF_POINTS) * 10 * 1.4);
+    return padX + verticalGlyphStripWidthTwips(css);
   }
   return padX + estimateCellTextWidthTwips(cell, styleResolver);
 }
@@ -703,19 +728,20 @@ function cellParagraph(
     ? collectInlineRunsFromNodes(content, typography, undefined, styleResolver)
     : [new TextRun("")];
   const hasImage = nodesContainImage(content);
-  // Browsers center `<th>` by default (UA `th { text-align: center }`); an explicit
-  // text-align / align attr still wins.
-  const textAlign = css.textAlign ?? (cell.element.name.toLowerCase() === "th" ? "center" : undefined);
+  const verticalText = Boolean(cellTextDirection(css));
+  const textAlign = cellResolvedTextAlign(cell, css);
+  // Rotated labels need the row/cell height, not a single-line EXACT box.
   return new Paragraph({
     ...(textAlign ? { alignment: mapTextAlign(textAlign) } : {}),
-    spacing: hasImage
-      ? { before: 0, after: 0 }
-      : {
-          before: 0,
-          after: 0,
-          line: exactLineForFontSize(typography.fontSize),
-          lineRule: LineRuleType.EXACT,
-        },
+    spacing:
+      hasImage || verticalText
+        ? { before: 0, after: 0 }
+        : {
+            before: 0,
+            after: 0,
+            line: exactLineForFontSize(typography.fontSize),
+            lineRule: LineRuleType.EXACT,
+          },
     children,
   });
 }
@@ -991,6 +1017,7 @@ function buildTableCell(
       : undefined;
   // Row-merged CSS so `writing-mode` on the <tr> rotates its cells (it inherits).
   const textDirection = cellTextDirection(resolveCellCss(cell, styleResolver));
+  const verticalAlign = cellTableVerticalAlign(cell, styleResolver);
   return new TableCell({
     columnSpan: span > 1 ? span : undefined,
     rowSpan: cell.rowspan > 1 ? cell.rowspan : undefined,
@@ -1002,6 +1029,7 @@ function buildTableCell(
     shading: cellShading(cell, styleResolver),
     ...(borders ? { borders } : {}),
     ...(textDirection ? { textDirection } : {}),
+    ...(verticalAlign ? { verticalAlign } : {}),
     children: cellBlocks($, cell, columnIndex, columnWidths, styleResolver, cellPadding),
   });
 }
@@ -1079,6 +1107,37 @@ function isRenderableEmptyCell(cell: ParsedCell, styleResolver: StyleResolver): 
   return !hasContent(cell.element.children ?? []);
 }
 
+function estimateVerticalCellMinHeightTwips(
+  cell: ParsedCell,
+  styleResolver: StyleResolver,
+  cellPadding: number | undefined,
+): number | undefined {
+  const css = resolveCellCss(cell, styleResolver);
+  if (!cellTextDirection(css)) return undefined;
+  const text = elementPlainText(cell.element);
+  if (!text) return undefined;
+  const cellCss = styleResolver.getCss(cell.element);
+  const padTop = cellCss.paddingTop ?? cellPadding ?? 0;
+  const padBottom = cellCss.paddingBottom ?? cellPadding ?? 0;
+  // Rotated text runs along the row axis — horizontal text extent becomes row height.
+  const textHeight = estimateTextWidthTwips(text, cellTextMeasureOptions(cell, styleResolver));
+  return padTop + padBottom + textHeight;
+}
+
+/** Minimum row height from vertical-text cells — max across the row's rotated labels. */
+function verticalTextRowHeightTwips(
+  row: PlacedCell[],
+  styleResolver: StyleResolver,
+  cellPadding: number | undefined,
+): number | undefined {
+  let max = 0;
+  for (const { cell } of row) {
+    const height = estimateVerticalCellMinHeightTwips(cell, styleResolver, cellPadding);
+    if (height !== undefined && height > max) max = height;
+  }
+  return max > 0 ? max : undefined;
+}
+
 /** Explicit row height: max of the tr's and its cells' `height` (CSS or attr), in twips. */
 function explicitRowHeightTwips(
   row: PlacedCell[],
@@ -1110,8 +1169,9 @@ function explicitRowHeightTwips(
  * - Spacer rows (nothing renderable in any cell) collapse to their declared
  *   height — or to just the cell padding, matching browsers, instead of the
  *   full default line box that inflated every divider/gap row (~20px each).
- * - Content rows with a declared height get AT_LEAST — HTML treats tr/td
- *   height as a minimum; content may grow past it.
+ * - Content rows with a declared height or vertical-text labels get AT_LEAST —
+ *   HTML treats tr/td height as a minimum; rotated label length sets a floor
+ *   on row height the same way it sets column width when horizontal.
  */
 function rowHeightOptions(
   row: PlacedCell[],
@@ -1119,13 +1179,20 @@ function rowHeightOptions(
   cellPadding: number | undefined,
 ): { value: number; rule: (typeof HeightRule)[keyof typeof HeightRule] } | undefined {
   const explicit = explicitRowHeightTwips(row, styleResolver);
+  const verticalMin = verticalTextRowHeightTwips(row, styleResolver, cellPadding);
   const isSpacerRow =
     row.length === 0 || row.every(({ cell }) => isRenderableEmptyCell(cell, styleResolver));
   if (isSpacerRow) {
     const padding = (cellPadding ?? 0) * 2;
     return { value: explicit ?? Math.max(padding, 20), rule: HeightRule.EXACT };
   }
-  if (explicit) return { value: explicit, rule: HeightRule.ATLEAST };
+  const contentMin =
+    explicit !== undefined || verticalMin !== undefined
+      ? Math.max(explicit ?? 0, verticalMin ?? 0)
+      : undefined;
+  if (contentMin !== undefined && contentMin > 0) {
+    return { value: contentMin, rule: HeightRule.ATLEAST };
+  }
   return undefined;
 }
 

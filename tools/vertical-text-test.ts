@@ -82,6 +82,23 @@ async function main(): Promise<void> {
     `${vertical[0]} twips`,
   );
 
+  console.log("\nrow height:");
+  const verticalRowXml = await documentXml(VERTICAL_HEADER_HTML("vertical-rl"));
+  const trHeightMatch = verticalRowXml.match(/<w:trHeight w:val="(\d+)"[^/]*w:hRule="atLeast"/);
+  const trHeight = trHeightMatch ? Number(trHeightMatch[1]) : 0;
+  check(
+    "vertical header row gets ATLEAST height from label length",
+    trHeight >= 800,
+    trHeight ? `${trHeight} twips` : "no w:trHeight",
+  );
+
+  console.log("\ncolumn centering:");
+  const centerXml = await documentXml(VERTICAL_HEADER_HTML("vertical-rl"));
+  check(
+    "centered vertical header cell gets vAlign center",
+    /<w:vAlign w:val="center"\s*\/>/.test(centerXml),
+  );
+
   console.log("\ndeprecated alias mapping:");
   const tbRlAliasXml = await documentXml(`
     <table><tr><th style="writing-mode:tb-rl">alias</th></tr></table>`);

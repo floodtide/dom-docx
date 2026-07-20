@@ -387,6 +387,33 @@ const EDGE_TEST_CASES: TestCase[] = [
     `,
   },
   {
+    name: "table-vertical-text",
+    description: "Vertical table header columns via CSS `writing-mode` (narrow rotated labels + horizontal control)",
+    // Browsers rotate `writing-mode: vertical-rl` / `sideways-lr` on `<th>` natively and
+    // keep the header column one line box wide — the label grows row height, not column
+    // width. A regression that emits horizontal text (or content-weights the column by
+    // label length) blows out the first column and shifts the whole grid vs the browser.
+    // Short body cells keep wrapping out of the signal; fixed layout pins the value column.
+    html: `
+      <table border="1" cellpadding="6" style="border-collapse:collapse;table-layout:fixed;width:100%">
+        <colgroup>
+          <col>
+          <col style="width:70%">
+        </colgroup>
+        <tr>
+          <th style="writing-mode:vertical-rl">Metric name</th>
+          <th align="left">Value</th>
+        </tr>
+        <tr><td>Revenue</td><td>$1.2M</td></tr>
+        <tr><td>Margin</td><td>18%</td></tr>
+        <tr>
+          <th style="writing-mode:sideways-lr">Notes</th>
+          <td>Q4 outlook</td>
+        </tr>
+      </table>
+    `,
+  },
+  {
     name: "table-empty-cell-row-height",
     description: "Truly empty rows collapse; `&nbsp;`/zero-width rows keep a line box",
     // Browsers keep a full-height line box for cells containing &nbsp;, zero-width
