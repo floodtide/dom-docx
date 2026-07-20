@@ -607,11 +607,19 @@ export function cssToBlockTypography(css: ParsedCss): RunTypography {
     color: css.color,
     fontSize: css.fontSize,
   };
-  if (css.fontWeight === "bold" || Number(css.fontWeight) >= 600) {
-    typography.bold = true;
+  if (css.fontWeight !== undefined) {
+    const w = Number(css.fontWeight);
+    if (css.fontWeight === "bold" || (!isNaN(w) && w >= 600)) {
+      typography.bold = true;
+    } else if (css.fontWeight === "normal" || (!isNaN(w) && w < 600)) {
+      typography.bold = false;
+    }
+    // "bolder", "lighter", "inherit" etc. → no change
   }
-  if (css.fontStyle === "italic") {
+  if (css.fontStyle === "italic" || css.fontStyle === "oblique") {
     typography.italics = true;
+  } else if (css.fontStyle === "normal") {
+    typography.italics = false;
   }
   if (css.fontFamily) {
     typography.font = css.fontFamily;

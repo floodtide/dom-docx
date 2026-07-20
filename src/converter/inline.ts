@@ -68,8 +68,8 @@ export function typographyToTextRunOptions(
   if (resolvedColor) {
     options.color = resolvedColor;
   }
-  if (style.bold) options.bold = true;
-  if (style.italics) options.italics = true;
+  if (style.bold !== undefined) options.bold = style.bold;
+  if (style.italics !== undefined) options.italics = style.italics;
   if (style.allCaps) options.allCaps = true;
   if (style.characterSpacing) options.characterSpacing = style.characterSpacing;
   if (style.underline) {
