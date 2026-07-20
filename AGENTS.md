@@ -62,6 +62,7 @@ Think “Word-friendly semantic HTML,” not “web app layout.”
 | **Emoji as UI icons** | Font/glyph mismatch in Word |
 | **External stylesheets** | Only inline `style=""` and a few attributes (`border`, `cellpadding`, `colspan`) |
 | **Grid / absolute / float layout** | No `position`, `float`, `grid-template` |
+| **CSS `transform` / arbitrary text rotation** | Intentionally out of scope. `transform: rotate(45deg)` and all other `transform` functions are ignored. Word cell text direction (`w:textDirection`) supports only 90° orientations, so diagonal/angled text has no native, in-flow equivalent — it would require a floating shape, which breaks editability and is not emitted. |
 | **Multi-column CSS** | No `column-count` |
 | **Web fonts** | Defaults to Arial; custom `@font-face` ignored |
 | **Forms, inputs, buttons** | Not supported |
