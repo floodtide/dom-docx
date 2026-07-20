@@ -6,6 +6,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+### Added
+
+- **Vertical table cell text via CSS `writing-mode`.** `writing-mode: vertical-rl` / `vertical-lr` / `sideways-rl` on a `<td>`/`<th>` (or inherited from its `<tr>`) becomes OOXML `w:textDirection` `tbRl` (text rotated 90° clockwise); `sideways-lr` becomes `btLr` (90° counter-clockwise) — the classic narrow vertical header column. Vertical cells also stop content-weighting their column by label length and weigh in at one line box wide, since the label grows the row height instead. Works on both the inline and computed style paths. `text-orientation: upright` (stacked upright glyphs) has no OOXML equivalent and keeps the cell horizontal. Guard: `npm run guard:vertical-text`.
+
 ### Fixed
 
 - **Physical CSS length units (`pt`, `pc`, `mm`, `cm`, `in`) now work in table cell and column widths.** `<col style="width:72pt">`, `<col width="1in">`, and `<td width="2cm">` previously fell through to the pixel branch, so `72pt` was read as `72px` (25% too narrow) and `2cm` as `2px` (collapsed to a sliver). All five units now convert to the correct twip widths, in both the `style="width:…"` and legacy `width=""` attribute paths; unitless attribute values still mean pixels and `%` still resolves against the table content width. Suite case: `table-physical-unit-widths`. Guard: `npm run guard:table-width-units`.
