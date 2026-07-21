@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.1.17
+
+### Added
+
+- **CSS `line-height` on block elements → paragraph line spacing.** Unitless multipliers (`1`, `1.15`, `1.5`, `2`), percentages, and absolute lengths (`px`, `pt`, `em`) are parsed on both the inline and computed style paths and emitted as `AT_LEAST` `w:spacing/@w:line` twips sized to the paragraph font. When omitted, the default remains 1.4× (matching the HTML harness). Suite case: `line-height-presets`.
+
+### Fixed
+
+- **Unstyled headings no longer render in Word's theme blue.** `<h1>`–`<h6>` without an explicit CSS `color` mapped to Word Heading 1–6 styles, which carry a default theme blue (`#2E74B5`) that browsers never show — the inline path never sees inherited body `color`. Headings with no author color now get an explicit near-black run color (`#111`, matching the harness body) while keeping the Heading style for outline levels and TOC bookmarks. Explicit heading colors and computed-path inherited colors (including light text on dark banners) are unchanged. Suite cases: `heading-hierarchy`, `line-height-presets`.
+
+- **Flex card images: ghost whitespace and short bordered boxes.** Pretty-printed HTML whitespace around block children in flex cards no longer flushes as empty EXACT-line paragraphs (a visible band above/below chart images). Chart mount divs (`height:300px` wrapper around an `<img>`) now size the flex row from the mount height and emit an EXACT spacer line below the image so the bordered card matches the browser box instead of `min-height` alone with the image sitting on a short line. Drawing paragraphs skip the AT_LEAST vertical-centering patch so tall image lines stay top-aligned. Suite case: `flex-row-images` (93.7% → 96.8%).
+
 ## 0.1.16
 
 ### Added

@@ -800,6 +800,33 @@ const EDGE_TEST_CASES: TestCase[] = [
       <p>HTML tags: x<sup>2</sup> and H<sub>2</sub>O in running text.</p>
     `,
   },
+  {
+    name: "line-height-presets",
+    description: "CSS `line-height` presets — single (1), 1.15, 1.5, and double (2) spacing",
+    html: `
+      <h2 style="margin:0 0 10px">Line height presets</h2>
+      <p style="line-height:1;margin:0 0 14px">
+        <strong>Single (1.0).</strong>
+        The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs.
+        How vexingly quick daft zebras jump.
+      </p>
+      <p style="line-height:1.15;margin:0 0 14px">
+        <strong>1.15.</strong>
+        The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs.
+        How vexingly quick daft zebras jump.
+      </p>
+      <p style="line-height:1.5;margin:0 0 14px">
+        <strong>1.5.</strong>
+        The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs.
+        How vexingly quick daft zebras jump.
+      </p>
+      <p style="line-height:2;margin:0">
+        <strong>Double (2.0).</strong>
+        The quick brown fox jumps over the lazy dog. Pack my box with five dozen liquor jugs.
+        How vexingly quick daft zebras jump.
+      </p>
+    `,
+  },
 ];
 
 export function generateTestCases(): TestCase[] {

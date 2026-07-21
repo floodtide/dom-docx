@@ -466,6 +466,7 @@ Parsed from `style=""` (and from computed snapshots on the computed path):
 | `background`, `background-color` | Hex / rgb; `transparent` ignored |
 | `text-align` | `left`, `center`, `right`, `justify` |
 | `font-size` | `px`, `pt`, `em` |
+| `line-height` | Unitless (`1`, `1.15`, `1.5`, `2`), `%`, `px`, `pt`, `em` → `AT_LEAST` paragraph line spacing; default 1.4× when omitted |
 | `font-weight`, `font-style` | Including `bold`, `600`, `italic` |
 | `list-style-type` | decimal, lower/upper-alpha, lower/upper-roman, disc, circle, square |
 | `margin`, `margin-*` | `px`, `pt`, `em` |
@@ -560,7 +561,7 @@ Built-in resolvers and helpers (exported from `dom-docx`):
 | `rasterizeInPlace(root, options?)` | Browser: mutate live DOM to replace charts with PNG `<img>`. |
 | `isSimpleSvgElement(svg)` | Browser: true when SVG converts natively without rasterization. |
 
-**Computed style properties captured** (via `getComputedStyle`): `color`, `backgroundColor`, `display`, `flexDirection`, `gap` / `columnGap` / `rowGap`, `textAlign`, `fontSize`, `fontWeight`, `fontStyle`, margin and padding sides, per-side border width/color, `writingMode` / `textOrientation`. UA defaults on headings are partially stripped when the element has no inline override, so the computed path stays aligned with the inline path for bare `<h1>`–`<h6>`.
+**Computed style properties captured** (via `getComputedStyle`): `color`, `backgroundColor`, `display`, `flexDirection`, `gap` / `columnGap` / `rowGap`, `textAlign`, `fontSize`, `lineHeight`, `fontWeight`, `fontStyle`, margin and padding sides, per-side border width/color, `writingMode` / `textOrientation`. UA defaults on headings are partially stripped when the element has no inline override, so the computed path stays aligned with the inline path for bare `<h1>`–`<h6>`.
 
 ---
 

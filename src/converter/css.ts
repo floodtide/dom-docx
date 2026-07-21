@@ -30,6 +30,8 @@ export interface ParsedCss {
   /** `letter-spacing` in em (resolved against font size at typography build). */
   letterSpacingEm?: number;
   fontSize?: number;
+  /** CSS `line-height` as a unitless multiplier (e.g. 1.5). */
+  lineHeight?: number;
   fontWeight?: string;
   fontStyle?: string;
   listStyleType?: string;
@@ -188,6 +190,41 @@ export function parseFontSize(value: string | undefined): number | undefined {
   return Number.isFinite(num) ? pxToHalfPoints(num) : undefined;
 }
 
+/** Parse CSS `line-height` to a unitless multiplier (e.g. 1.5). */
+export function parseLineHeight(
+  value: string | undefined,
+  fontSizeHalfPoints?: number,
+): number | undefined {
+  if (!value) return undefined;
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed || trimmed === "normal" || trimmed === "inherit" || trimmed === "initial") {
+    return undefined;
+  }
+  const unitless = trimmed.match(/^(\d+(?:\.\d+)?)$/);
+  if (unitless) {
+    const n = parseFloat(unitless[1]!);
+    return Number.isFinite(n) && n > 0 ? n : undefined;
+  }
+  if (trimmed.endsWith("%")) {
+    const n = parseFloat(trimmed);
+    return Number.isFinite(n) && n > 0 ? n / 100 : undefined;
+  }
+  const fontPx = fontSizeHalfPoints ? fontSizeHalfPoints / 1.5 : 14;
+  if (trimmed.endsWith("px")) {
+    const px = parseFloat(trimmed);
+    return Number.isFinite(px) && px > 0 ? px / fontPx : undefined;
+  }
+  if (trimmed.endsWith("pt")) {
+    const pt = parseFloat(trimmed);
+    return Number.isFinite(pt) && pt > 0 ? (pt * 96) / 72 / fontPx : undefined;
+  }
+  if (trimmed.endsWith("em")) {
+    const em = parseFloat(trimmed);
+    return Number.isFinite(em) && em > 0 ? em : undefined;
+  }
+  return undefined;
+}
+
 function parseBorderShorthand(value: string): ParsedBorder | undefined {
   if (/\b(?:none|hidden)\b/i.test(value)) return undefined;
   const widthMatch = value.match(/(\d+(?:\.\d+)?)\s*px/i);
@@ -228,6 +265,7 @@ export function parseInlineStyle(style: string | undefined): ParsedCss {
   if (!style) return {};
 
   const result: ParsedCss = {};
+  let lineHeightRaw: string | undefined;
   for (const declaration of style.split(";")) {
     const colon = declaration.indexOf(":");
     if (colon === -1) continue;
@@ -283,6 +321,9 @@ export function parseInlineStyle(style: string | undefined): ParsedCss {
         break;
       case "font-size":
         result.fontSize = parseFontSize(value);
+        break;
+      case "line-height":
+        lineHeightRaw = value;
         break;
       case "font-weight":
         result.fontWeight = value;
@@ -390,6 +431,9 @@ export function parseInlineStyle(style: string | undefined): ParsedCss {
       default:
         break;
     }
+  }
+  if (lineHeightRaw) {
+    result.lineHeight = parseLineHeight(lineHeightRaw, result.fontSize);
   }
   return result;
 }
@@ -609,6 +653,7 @@ export function cssToBlockLayout(css: ParsedCss): BlockLayout {
     borders: buildBlockBorders(css),
     pageBreakBefore: css.pageBreakBefore || undefined,
     pageBreakAfter: css.pageBreakAfter || undefined,
+    lineHeight: css.lineHeight,
   };
 }
 

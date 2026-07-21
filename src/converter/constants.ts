@@ -35,6 +35,12 @@ export const HYPERLINK_COLOR = "0000EE";
 /** Matches the HTML harness body font (validator.ts wrapHtml). */
 export const BODY_FONT = "Arial";
 
+/** Default body text color — harness `color: #111`; overrides Word Heading theme blue. */
+export const BODY_TEXT_COLOR = "111111";
+
+/** Default CSS line-height multiplier (HTML harness + docx body). */
+export const DEFAULT_LINE_HEIGHT = 1.4;
+
 /** Validator line-height: 1.4 → 14px × 1.4 = 19.6px line box. */
 export const BODY_LINE_HEIGHT = 336;
 
@@ -63,6 +69,11 @@ export const SUPER_SUB_MIXED_LINE_BOX_RATIO = 25.78125 / BODY_LINE_BOX_PX;
 
 /** EXACT `w:spacing/@w:line` in twips — CSS line box, not Word AUTO multiplier. */
 export const BODY_LINE_EXACT_TWIPS = Math.round(BODY_LINE_BOX_PX * 15);
+
+/** AT_LEAST `w:spacing/@w:line` in twips from font size (half-points) and line-height multiplier. */
+export function atLeastLineTwips(fontSizeHalfPoints: number, lineHeight = DEFAULT_LINE_HEIGHT): number {
+  return Math.round(fontSizeHalfPoints * lineHeight * 10);
+}
 
 export const HEADING_LEVELS = {
   h1: HeadingLevel.HEADING_1,

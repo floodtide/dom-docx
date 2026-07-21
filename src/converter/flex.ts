@@ -41,8 +41,8 @@ export interface FlexItemContent {
    * Estimated content height (twips) for text card-style items with block children —
    * used as an AT_LEAST floor on the row so LibreOffice doesn't collapse/inflate tight
    * cards (it sizes rows by natural font metrics). The row still grows past this to fit
-   * wrapping/nested content. Omitted for items that wrap raster `<img>` / `<canvas>` so
-   * the drawing sizes the row instead.
+   * wrapping/nested content. For raster `<img>` / `<canvas>` items, includes the mount
+   * div height (direct block child) so the bordered card matches the browser box.
    */
   contentHeightTwips?: number;
   /** CSS `min-height` (twips) — a floor applied to the flex row as AT_LEAST height. */
@@ -244,7 +244,8 @@ export function makeFlexRowTable(
   // wrapped headings and nested content: a long heading in a flex wrapper wrapped to
   // two lines and had its second line sliced off. AT_LEAST keeps single-line cards
   // tight (natural height ≈ the estimate) while letting wrapping content grow.
-  // Items with raster media omit contentHeightTwips so the drawing sizes the row.
+  // Raster media items include mount-div height in contentHeightTwips so the row
+  // matches the browser card box instead of min-height alone with a short image.
   const maxContentHeight = Math.max(0, ...items.map((it) => it.contentHeightTwips ?? 0));
   const maxMinHeight = Math.max(0, ...items.map((it) => it.minHeightTwips ?? 0));
   const floor = Math.max(maxContentHeight, maxMinHeight);

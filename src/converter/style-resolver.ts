@@ -5,6 +5,7 @@ import {
   isPageBreakCssValue,
   parseGap,
   parseInlineStyle,
+  parseLineHeight,
   presentationalAttributesCss,
   pxToTwips,
   type ParsedBorder,
@@ -58,6 +59,7 @@ export function parsedCssFromComputedRecord(raw: Record<string, string>): Parsed
   css.gap = parseGap(raw.gap) ?? parseGap(raw.columnGap) ?? parseGap(raw.rowGap);
   css.textAlign = raw.textAlign?.trim().toLowerCase() || undefined;
   css.fontSize = parseFontSize(raw.fontSize);
+  css.lineHeight = parseLineHeight(raw.lineHeight, css.fontSize);
   css.fontWeight = raw.fontWeight?.trim() || undefined;
   css.fontStyle = raw.fontStyle?.trim().toLowerCase() || undefined;
   css.textTransform = raw.textTransform?.trim().toLowerCase() || undefined;

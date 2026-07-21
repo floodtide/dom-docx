@@ -13,18 +13,21 @@ import type { CheerioAPI } from "cheerio";
 import type { AnyNode, Element } from "domhandler";
 import { prependElementBookmark } from "./bookmarks.js";
 import {
+  atLeastLineTwips,
   BODY_FONT_HALF_POINTS,
   BODY_LINE_EXACT_TWIPS,
   BODY_LINE_HEIGHT,
   BLOCKQUOTE_MARGIN_PX,
   BLOCKQUOTE_INDENT_PX,
   BLOCKQUOTE_UA_SIDE_MARGIN_PX,
+  DEFAULT_LINE_HEIGHT,
   LIST_HANGING_TWIPS,
   LIST_LEVEL_LEFT_TWIPS,
   DEFAULT_PARAGRAPH_MARGIN_PX,
   HEADING_FONT_HALF_POINTS,
   HEADING_LEVELS,
   HEADING_MARGIN_EM,
+  BODY_TEXT_COLOR,
   LIST_STYLE_REFERENCES,
 } from "./constants.js";
 import {
@@ -428,13 +431,16 @@ function makeParagraph(
       }
     : {};
 
-  // CSS line-height 1.4 → AT_LEAST font×1.4 (AUTO multiplies Word's natural
+  // CSS line-height → AT_LEAST font×multiplier (AUTO multiplies Word's natural
   // ~1.15em line — too tall; EXACT clips taller inline content like images).
   // Merged WITH the margin spacing — a separate spread would be overwritten.
+  const lineHeightMult = layout.lineHeight ?? DEFAULT_LINE_HEIGHT;
   const atLeastLine =
     typeof extra.atLeastLineTwips === "number"
       ? (extra.atLeastLineTwips as number)
-      : BODY_LINE_EXACT_TWIPS;
+      : layout.lineHeight
+        ? atLeastLineTwips(BODY_FONT_HALF_POINTS, lineHeightMult)
+        : BODY_LINE_EXACT_TWIPS;
   const defaultLineSpacing = {
     spacing: {
       ...(layoutProps.spacing ?? {}),
@@ -574,12 +580,34 @@ function emitFlowBlocks(
 
   const flush = (): void => {
     if (pendingInline.length === 0 && !blockLayout.shading) return;
+    const runs = collectInlineRunsFromNodes(
+      pendingInline,
+      inheritedTypography,
+      undefined,
+      ctx.styleResolver,
+      ctx.defaultSizeHalfPoints,
+    );
+    // Pretty-printed HTML adds whitespace text nodes around block children; browsers
+    // collapse them, but an empty flush would become an emptyRun paragraph — and in
+    // flex cards that picks up EXACT line height (~1.4em), leaving a visible band
+    // above/below images (flex-row-images repro).
+    if (runs.length === 0 && !blockLayout.shading) {
+      pendingInline = [];
+      return;
+    }
     const hasLineBreaks = nodesHaveLineBreaks(pendingInline);
     // In a flex-item's block children, size each line box to its own font (CSS
-    // line-height 1.4), not AUTO — halfPt/2 → pt × 1.4 × 20 twips = halfPt × 14.
+    // line-height), not AUTO — halfPt/2 → pt × lh × 20 twips = halfPt × (lh × 10).
     // Rasterized chart images need a taller line box or LibreOffice clips them.
-    const textLineTwips = (inheritedTypography.fontSize ?? ctx.defaultSizeHalfPoints) * 14;
+    const lineHeightMult = blockLayout.lineHeight ?? DEFAULT_LINE_HEIGHT;
+    const fontSizeHp = inheritedTypography.fontSize ?? ctx.defaultSizeHalfPoints;
+    const textLineTwips = atLeastLineTwips(fontSizeHp, lineHeightMult);
     const mediaTwips = ctx.flexBlockContent ? maxInlineMediaHeightTwips(pendingInline) : 0;
+    const mountTwips =
+      ctx.flexBlockContent && mediaTwips > 0 && containerElement
+        ? flexMediaMountHeightTwips(containerElement, ctx)
+        : 0;
+    const mountSpacerTwips = mountTwips > mediaTwips ? mountTwips - mediaTwips : 0;
     const superSubLineTwips = atLeastLineTwipsForSuperSubInline(
       pendingInline,
       ctx.defaultSizeHalfPoints,
@@ -594,7 +622,7 @@ function emitFlowBlocks(
       ctx.flexBlockContent && mediaTwips === 0 ? textLineTwips : undefined;
     blocks.push(
       ...emitBlockContent(
-        collectInlineRunsFromNodes(pendingInline, inheritedTypography, undefined, ctx.styleResolver, ctx.defaultSizeHalfPoints),
+        runs,
         blockLayout,
         {
           ...extra,
@@ -606,13 +634,24 @@ function emitFlowBlocks(
             ? { atLeastLineTwips: Math.max(textLineTwips, mediaTwips) }
             : superSubLineTwips
               ? { atLeastLineTwips: Math.max(textLineTwips, superSubLineTwips) }
-              : inheritedTypography.fontSize
-                ? { atLeastLineTwips: inheritedTypography.fontSize * 14 }
+              : inheritedTypography.fontSize || blockLayout.lineHeight
+                ? { atLeastLineTwips: textLineTwips }
                 : {}),
         },
         containerElement,
       ),
     );
+    // Chart mount divs are taller than the rasterized image — fill the remainder
+    // below the image with an EXACT spacer line so the card border matches HTML
+    // without putting the image on the baseline of a tall AT_LEAST line box.
+    if (mountSpacerTwips > 0) {
+      blocks.push(
+        makeParagraph([], blockLayout, {
+          exactLineTwips: mountSpacerTwips,
+          flexContent: ctx.flexBlockContent,
+        }),
+      );
+    }
     pendingInline = [];
   };
 
@@ -653,6 +692,22 @@ function isMediaOnlyContainer(element: Element): boolean {
   };
   walk(element.children ?? []);
   return hasMedia && !hasText;
+}
+
+/** Explicit height (twips) of direct block children — chart mount divs, etc. */
+function directBlockChildHeightTwips(item: Element, ctx: VisitorContext): number {
+  let max = 0;
+  for (const child of getDirectBlockChildren(item, ctx.styleResolver)) {
+    const h = ctx.styleResolver.getCss(child).heightTwips;
+    if (h) max = Math.max(max, h);
+  }
+  return max;
+}
+
+/** Mount-box height for a flex media line: the element's own height or a direct block child. */
+function flexMediaMountHeightTwips(element: Element, ctx: VisitorContext): number {
+  const own = ctx.styleResolver.getCss(element).heightTwips ?? 0;
+  return Math.max(own, directBlockChildHeightTwips(element, ctx));
 }
 
 /** True when the flex item subtree contains a raster `<img>` / `<canvas>`. */
@@ -698,8 +753,11 @@ function estimateFlexItemMediaHeightTwips(
     }
   };
   walk(item);
-  // Explicit media size wins — ignore inflated chart-wrapper CSS heights.
-  const maxTwips = mediaTwips > 0 ? mediaTwips : cssTwips;
+  const directChildTwips = directBlockChildHeightTwips(item, ctx);
+  // Explicit media size wins over deep ancestor CSS (Highcharts wrappers), but a
+  // direct block-child height (chart mount div) still bounds the card content box.
+  const maxTwips =
+    mediaTwips > 0 ? Math.max(mediaTwips, directChildTwips) : cssTwips;
   if (maxTwips === 0) return 0;
   return maxTwips + (itemLayout.paddingTop ?? 0) + (itemLayout.paddingBottom ?? 0);
 }
@@ -747,7 +805,7 @@ function processFlexContainer(
       const itemCtx: VisitorContext = { ...childCtx, flexBlockContent: true };
       const hasMedia = flexItemHasRasterMedia(item);
       const contentHeightTwips = hasMedia
-        ? undefined
+        ? estimateFlexItemMediaHeightTwips(item, itemLayout, ctx)
         : estimateFlexItemContentHeight(item, itemLayout, ctx);
       // Render the item's CHILDREN, not the item element: the flex cell already
       // paints the item's border / background / padding (see makeFlexRowTable), so
@@ -1111,6 +1169,9 @@ function processHeading($: CheerioAPI, element: Element, ctx: VisitorContext): D
     ...fromElement,
     bold: true,
     fontSize,
+    // Word Heading 1–6 styles default to theme blue; inherit body foreground when
+    // CSS does not set a color (browser inherits body `color`, inline path never sees it).
+    color: fromElement.color ?? BODY_TEXT_COLOR,
   };
   const hasBlockShading = Boolean(layout.shading?.fill);
   const fontSizePx = fontSize / 1.5;
@@ -1125,7 +1186,7 @@ function processHeading($: CheerioAPI, element: Element, ctx: VisitorContext): D
   return emitBlockContent(
     collectInlineRunsFromNodes(element.children ?? [], typography, undefined, ctx.styleResolver, ctx.defaultSizeHalfPoints),
     headingLayout,
-    hasBlockShading ? {} : { heading: HEADING_LEVELS[tag], atLeastLineTwips: fontSize * 14 },
+    hasBlockShading ? {} : { heading: HEADING_LEVELS[tag], atLeastLineTwips: atLeastLineTwips(fontSize, layout.lineHeight) },
     element,
   );
 }

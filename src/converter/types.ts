@@ -39,6 +39,8 @@ export interface BlockLayout {
   borders?: BlockBorders;
   /** Line box height (px) for EXACT shaded paragraphs; defaults to body line height. */
   shadedContentLinePx?: number;
+  /** CSS `line-height` as a unitless multiplier (e.g. 1.5). */
+  lineHeight?: number;
   /** Font size (half-points) for shaded padding tab runs. */
   shadedTabHalfPoints?: number;
   /** Force a page break before this paragraph (CSS break-before / class). */

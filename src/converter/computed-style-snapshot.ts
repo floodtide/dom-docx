@@ -49,6 +49,7 @@ export function snapshotComputedStylesFromDocument(
     "rowGap",
     "textAlign",
     "fontSize",
+    "lineHeight",
     "fontWeight",
     "fontStyle",
     "textTransform",

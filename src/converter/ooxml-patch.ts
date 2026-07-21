@@ -22,16 +22,21 @@ export function patchNumberingXml(numberingXml: string): string {
  * glyphs within that shaded band.
  */
 export function patchShadedParagraphVerticalAlign(documentXml: string): string {
-  return documentXml.replace(/<w:pPr>([\s\S]*?)<\/w:pPr>/g, (full, inner: string) => {
-    // Shaded EXACT paragraphs (padding folded into the line) and AT_LEAST
-    // paragraphs (CSS line-height) both need glyphs centered in the line box:
-    // LO otherwise stacks ALL extra leading above the text, while browsers
-    // split it half above / half below.
-    const shadedExact = inner.includes("<w:shd") && inner.includes('w:lineRule="exact"');
-    const atLeastLine = inner.includes('w:lineRule="atLeast"');
-    if (!shadedExact && !atLeastLine) return full;
-    if (inner.includes("<w:textAlignment")) return full;
-    return `<w:pPr>${inner}<w:textAlignment w:val="center"/></w:pPr>`;
+  return documentXml.replace(/<w:p\b[^>]*>([\s\S]*?)<\/w:p>/g, (paragraph, body: string) => {
+    // Tall AT_LEAST line boxes for raster images must stay top-aligned; centering
+    // vertically offsets the drawing and recreates whitespace above/below charts.
+    if (body.includes("<w:drawing>")) return paragraph;
+    return paragraph.replace(/<w:pPr>([\s\S]*?)<\/w:pPr>/g, (full, inner: string) => {
+      // Shaded EXACT paragraphs (padding folded into the line) and AT_LEAST
+      // paragraphs (CSS line-height) both need glyphs centered in the line box:
+      // LO otherwise stacks ALL extra leading above the text, while browsers
+      // split it half above / half below.
+      const shadedExact = inner.includes("<w:shd") && inner.includes('w:lineRule="exact"');
+      const atLeastLine = inner.includes('w:lineRule="atLeast"');
+      if (!shadedExact && !atLeastLine) return full;
+      if (inner.includes("<w:textAlignment")) return full;
+      return `<w:pPr>${inner}<w:textAlignment w:val="center"/></w:pPr>`;
+    });
   });
 }
 

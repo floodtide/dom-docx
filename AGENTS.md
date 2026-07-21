@@ -75,7 +75,7 @@ Think “Word-friendly semantic HTML,” not “web app layout.”
 
 ### Page and typography defaults
 
-The engine assumes **US Letter**, **1″ margins**, **Arial 14px**, **line-height ~1.4**. You do not need a wrapper document; if you preview in a browser, match:
+The engine assumes **US Letter**, **1″ margins**, **Arial 14px**, **line-height ~1.4** when CSS does not set one. Set `line-height` on paragraphs and headings to match Google Docs presets (`1`, `1.15`, `1.5`, `2`) or any unitless multiplier. You do not need a wrapper document; if you preview in a browser, match:
 
 ```html
 <!-- Optional preview wrapper only — omit when calling convertHtmlToDocx -->
@@ -213,6 +213,7 @@ Parsed from `style=""` on any element:
 | `background` / `background-color` | `background:#f5f5f5` |
 | `text-align` | `left`, `center`, `right`, `justify` |
 | `font-size` | `13px`, `12px` (px preferred) |
+| `line-height` | Unitless (`1.5`, `2`), `%`, `px`, `pt`, `em` — paragraph line spacing |
 | `font-weight` | `bold`, `600` |
 | `font-style` | `italic` |
 | `margin`, `margin-*` | `margin-top:0`, `margin:8px 0` |
@@ -231,7 +232,7 @@ Everything else is ignored silently.
 
 | Element | Role |
 |---------|------|
-| `h1`–`h6` | Headings (mapped to Word heading levels) |
+| `h1`–`h6` | Headings (mapped to Word heading levels; default text color matches body `#111`, not Word theme blue) |
 | `p` | Body paragraphs |
 | `div`, `section` | Block containers; shading and padding |
 | `ul`, `ol`, `li` | Bulleted / numbered lists |
