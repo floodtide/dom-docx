@@ -185,7 +185,7 @@ interface DocumentConfig {
   };
   headerHtml?: string;   // HTML fragment rendered as the page header
   footerHtml?: string;   // HTML fragment rendered as the page footer
-  pageNumber?: boolean;  // centered "Page N" field appended to the footer
+  pageNumber?: boolean | string;  // footer page numbering; see "Word fields in page chrome" below
   lang?: string;         // spell-check locale, e.g. "en-US", "ar-SA"
   direction?: "ltr" | "rtl";
   coverHtml?: string;    // cover page: page 1, before the toc slot, then a page break
@@ -202,7 +202,7 @@ interface DocumentConfig {
 | `defaultFont` | `{family?, sizePt?}` | Arial, 10.5 pt | Default body font family and size (points). Applies to text with no explicit CSS font. |
 | `metadata` | `{title,subject,creator,keywords[],description}` | — | Core document properties → `docProps/core.xml`. `keywords` is joined with `, `. |
 | `headerHtml` / `footerHtml` | `string` | — | HTML fragment rendered as the page header / footer (its own inline-styled fragment). |
-| `pageNumber` | `boolean` | `false` | Appends a centered `Page N` field to the footer (creates one if `footerHtml` is absent). |
+| `pageNumber` | `boolean \| string` | `false` | Adds a page-number line to the footer (creates the footer if `footerHtml` is absent). `true` → centered `Page {page}`. A string is a plain-text or HTML template where `{page}` and `{pages}` become live Word fields (e.g. `"{page} of {pages}"` or `'<p style="text-align:right">{page}/{pages}</p>'`). For styled footers, prefer `footerHtml` with `data-docx-field` — [Word fields in page chrome](#word-fields-in-page-chrome). |
 | `lang` | `string` | — | Document spell-check locale (`w:lang`), e.g. `"en-US"`. |
 | `direction` | `"ltr" \| "rtl"` | `"ltr"` | `"rtl"` sets right-to-left runs (`w:rtl`) — e.g. Arabic/Hebrew. |
 | `coverHtml` | `string` | — | HTML fragment rendered as a **cover page**: the first content in the document, before the `tocHtml` slot (if any), followed by an automatic page break so the TOC/body start on the next page. Uses the inline style path like `headerHtml`/`footerHtml` (inline `style=""` + `data:` images such as a logo). When a header/footer/`pageNumber` is set, it is suppressed on the cover page (Word "different first page"). |
@@ -617,6 +617,37 @@ HTML fragment
 | `img` | Embedded `ImageRun` (`data:` URLs, or via `imageResolver`) |
 | `svg` (low-complexity) | Native DOCX blocks — `<rect>` bands + `<text>` (bar/funnel charts); complex SVG rasterized when `rasterizeInPlace` is set |
 | `strong`, `em`, `span`, `code`, `br` | Inline runs / breaks |
+| `span data-docx-field="…"` | Allowlisted Word field in **page chrome only** (`headerHtml` / `footerHtml` / `coverHtml` / `tocHtml`) — see below |
+
+### Word fields in page chrome
+
+Page numbers and section counts are **dynamic** — the word processor computes them at open/print time. dom-docx emits native OOXML fields from an **allowlisted** set only; caller text never becomes part of a field instruction.
+
+**Primary API:** `<span data-docx-field="<name>"></span>` in `headerHtml`, `footerHtml`, `coverHtml`, or `tocHtml`. Inline typography on the span (color, size, bold, …) styles the field. Body content does not support fields in v1 (unknown markers warn and drop).
+
+| `data-docx-field` | OOXML | Meaning |
+|-------------------|-------|---------|
+| `page` | `PAGE` | Current page number |
+| `pages` | `NUMPAGES` | Total page count |
+| `section-pages` | `SECTIONPAGES` | Pages in the current section |
+| `section` | `SECTION` | Current section number |
+
+Names are case-insensitive. **Sugar:** `{page}` and `{pages}` in chrome HTML or in a `pageNumber` string template are replaced with the same markers before conversion.
+
+**Intentionally unsupported:** merge fields, macros, external-reference fields (`INCLUDETEXT`, `LINK`, …), document-metadata fields (`DOCPROPERTY`, `AUTHOR`, …), and date/time fields — external refs can trigger security prompts; metadata and dates are better as static text at convert time. Unknown `data-docx-field` values emit `onWarning` and render nothing.
+
+```typescript
+await convertHtmlToDocx(bodyHtml, {
+  footerHtml:
+    '<p style="text-align:right;font-size:11px;color:#666">' +
+    'Page <span style="font-weight:bold" data-docx-field="page"></span>' +
+    ' of <span data-docx-field="pages"></span></p>',
+});
+// or shorthand:
+await convertHtmlToDocx(bodyHtml, { pageNumber: "{page} / {pages}" });
+```
+
+Fields are emitted as complex OOXML (begin → instrText → separate → cached value → end) with named character styles (`FldS0`, …) so LibreOffice preserves typography on field runs.
 
 ### OOXML post-processing
 
@@ -624,6 +655,7 @@ After `docx` packs the document, the engine unzips the buffer and patches XML th
 
 - **`numbering.xml`** — LibreOffice needs list tab stops as `w:val="num"` (not `"left"`) and drops tentative numbering flags.
 - **`document.xml`** — Shaded paragraphs with exact line spacing get vertical text alignment so PDF export centers padding correctly.
+- **`header*.xml` / `footer*.xml` + `styles.xml`** — Allowlisted page fields: `w:fldSimple` → complex fields; field run `rPr` promoted to `FldS*` character styles for LibreOffice.
 
 These patches are applied automatically; callers receive a finished `.docx`.
 

@@ -24,6 +24,14 @@ import {
 } from "./css.js";
 import type { StyleResolver } from "./style-resolver.js";
 import { INLINE_STYLE_RESOLVER } from "./style-resolver.js";
+import {
+  DEFAULT_INLINE_FIELD_OPTIONS,
+  DOCX_FIELD_CACHED_VALUE,
+  DOCX_FIELD_NAMES,
+  StyledDocxField,
+  resolveDocxFieldInstruction,
+  type InlineFieldOptions,
+} from "./fields.js";
 import type { BlockLayout, RunTypography } from "./types.js";
 
 function mergeTypography(base: RunTypography, overlay: RunTypography): RunTypography {
@@ -196,6 +204,7 @@ export function collectInlineRunsFromNodes(
   state: InlineRunState = { leadingTextDone: false, needsSpaceBeforeNext: false, afterLineBreak: false },
   styleResolver: StyleResolver = INLINE_STYLE_RESOLVER,
   defaultSize: number = BODY_FONT_HALF_POINTS,
+  fieldOptions: InlineFieldOptions = DEFAULT_INLINE_FIELD_OPTIONS,
 ): ParagraphChild[] {
   const runs: ParagraphChild[] = [];
 
@@ -277,6 +286,33 @@ export function collectInlineRunsFromNodes(
       cssTypography,
     );
 
+    if (tag === "span" && node.attribs?.["data-docx-field"]) {
+      const rawName = node.attribs["data-docx-field"];
+      if (!fieldOptions.enabled) {
+        fieldOptions.onWarning?.(
+          `dom-docx: data-docx-field="${rawName}" in body content is not supported in v1 — use headerHtml, footerHtml, coverHtml, or tocHtml.`,
+        );
+        continue;
+      }
+      const instruction = resolveDocxFieldInstruction(rawName);
+      if (!instruction) {
+        fieldOptions.onWarning?.(
+          `dom-docx: unsupported data-docx-field="${rawName}" — allowed values: ${DOCX_FIELD_NAMES.join(", ")}. The marker was dropped.`,
+        );
+        continue;
+      }
+      const runOpts = typographyToTextRunOptions(typography, defaultSize);
+      runs.push(
+        new StyledDocxField(
+          instruction,
+          new TextRun({ text: DOCX_FIELD_CACHED_VALUE, ...runOpts }),
+        ),
+      );
+      state.leadingTextDone = true;
+      state.needsSpaceBeforeNext = false;
+      continue;
+    }
+
     if (tag === "a") {
       const href = node.attribs?.href ?? "";
       const internalAnchor = internalAnchorFromHref(href);
@@ -297,6 +333,7 @@ export function collectInlineRunsFromNodes(
         state,
         styleResolver,
         defaultSize,
+        fieldOptions,
       );
       // Anchors with no inline content render as nothing in browsers (e.g. a
       // link that only wrapped an image) — unless they are a named target.
@@ -320,6 +357,7 @@ export function collectInlineRunsFromNodes(
       state,
       styleResolver,
       defaultSize,
+      fieldOptions,
     );
     // Any inline element with `id` is a fragment target (e.g. `<span id="n">`).
     runs.push(...wrapWithBookmark(node.attribs?.id, childRuns));

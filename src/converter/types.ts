@@ -2,6 +2,7 @@ import type { Paragraph, Table } from "docx";
 import { BODY_FONT_HALF_POINTS } from "./constants.js";
 import type { StyleResolver } from "./style-resolver.js";
 import { INLINE_STYLE_RESOLVER } from "./style-resolver.js";
+import type { InlineFieldOptions } from "./fields.js";
 
 export type DocxBlock = Paragraph | Table;
 
@@ -92,6 +93,8 @@ export interface VisitorContext {
   flexBlockContent?: boolean;
   /** When true, the next visited block starts on a new page (prior sibling had break-after). */
   pageBreakBeforeNext?: boolean;
+  /** Allowlisted Word fields in inline content (page chrome only). */
+  fieldOptions?: InlineFieldOptions;
 }
 
 export const DEFAULT_VISITOR_CONTEXT: VisitorContext = {

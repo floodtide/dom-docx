@@ -21,7 +21,7 @@ const PREREQS = [
 
 /** Verification checks — run all even if one fails, so every problem surfaces at once. */
 const CHECKS = [
-  ["guard:ci", "the 7 CI-safe guards (same as CI)"],
+  ["guard:ci", "8 CI-safe guards (inline, config, fields, toc-slot, internal-href, document-canvas, image-spacing, pack-smoke)"],
   ["guard:computed-parity", "oracle vs native byte-identical OOXML (Playwright)"],
   ["guard:browser-parity", "shipped browser bundle vs Node native (Playwright)"],
   ["guard:page-break", "structural page breaks: OOXML + multi-page PDF (LibreOffice)"],

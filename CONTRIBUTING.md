@@ -36,7 +36,7 @@ Everything below groups into four tiers by what it's actually for — a scored r
 
 - **`score:suite`** — the core loop (`tools/validator.ts`). Converts all cases from `tools/generator.ts` to DOCX, screenshots the source HTML (Chromium) and the converted DOCX (LibreOffice → PDF → PNG), scores layout fidelity + editability + compile speed, writes `output/suite/results.json`. Everything else in this project is judged against this number. Run one case with `SUITE_ONLY=<name> npm run score:suite`.
 - **`score:suite:priority`** — same script with `--priority`, only the ~10 cases named in `PRIORITY_LOOP_CASE_NAMES` (`tools/generator.ts`), for a fast dev loop. Writes a separate `results-priority.json` that `docs:sync` does **not** read — this is for local iteration, not the record.
-- **`score:suite:strict`** — same full suite with `--strict-visual`, a zero-tolerance pixel-regression flag for CI-grade runs. Writes to the same `results.json` as plain `score:suite`.
+- **`score:suite:strict`** — same full suite with `--strict-visual`: fails only when a case’s raw pixel tripwire count **increases** vs your local `output/suite/baseline.json` (not when pixels are merely non-zero). After an intentional visual change, run `npm run score:pin`. Writes to the same `results.json` as plain `score:suite`.
 - **`docs:sync`** — reads the JSON these scripts write and regenerates `docs/TEST-SCORES.md` + `docs/BENCHMARK.md`, so per-case tables and pass counts can't drift from what the harness actually measured. Optional sections (style-source, CSS cascade, guard status) are preserved verbatim from the last run if their source JSON is missing, rather than regressing to a placeholder.
 
 ```bash
@@ -93,10 +93,11 @@ npm run score:calibration -- --full
 
 ### 3. Guards — binary pass/fail invariants
 
-Each writes a result to `output/guards/<id>.json` (via `tools/guard-result.ts`, or an inlined equivalent in `scripts/pack-smoke.mjs` since it runs via plain `node`); `docs:sync` reads whichever are present into a single status table in BENCHMARK.md. `guard:inline`, `guard:config`, `guard:toc-slot`, `guard:internal-href`, `guard:document-canvas`, `guard:image-spacing`, and `guard:pack-smoke` need no Playwright/LibreOffice and run in CI (`guard:document-canvas` also runs an optional Playwright section when Chromium is installed); the remaining ones need Playwright/LibreOffice and are maintainer-only.
+Each writes a result to `output/guards/<id>.json` (via `tools/guard-result.ts`, or an inlined equivalent in `scripts/pack-smoke.mjs` since it runs via plain `node`); `docs:sync` reads whichever are present into a single status table in BENCHMARK.md. `guard:inline`, `guard:config`, `guard:fields`, `guard:toc-slot`, `guard:internal-href`, `guard:document-canvas`, `guard:image-spacing`, and `guard:pack-smoke` need no Playwright/LibreOffice and run in CI (`guard:document-canvas` also runs an optional Playwright section when Chromium is installed); the remaining ones need Playwright/LibreOffice and are maintainer-only.
 
 - **`guard:inline`** — converts every case via default options and via explicit `{ styleSource: "inline" }`; asserts byte-identical normalized `word/*.xml`. Catches accidental drift in the default path.
 - **`guard:config`** — a battery of named assertions (one per `DocumentConfig` field — `pageSize`, `margins`, `defaultFont`, `metadata`, `headerHtml`/`footerHtml`, `pageNumber`, `lang`/`direction`, `coverHtml`, `tocHtml`, …) that each produces the correct OOXML. **Runs every assertion through both public entries** — the Node `convertHtmlToDocx` and the browser `convertHtmlToDocxUint8Array` (its inline path runs headless) — because option forwarding is duplicated per entry and has drifted before (a new option reaching one entry but not the other, with no compiler error).
+- **`guard:fields`** — allowlisted Word fields in page chrome (`data-docx-field`, `{page}`/`{pages}` sugar, `pageNumber` templates). Asserts complex-field OOXML, FldS character styles for LibreOffice, denied-name warnings, and body scope. Writes a sample DOCX to `output/guards/fields/output.docx` for manual inspection. CI — no Playwright/LibreOffice.
 - **`guard:pack-smoke`** — `npm pack`s the real tarball, installs it into a clean temp project, and asserts: Playwright isn't a hard/optional dependency, the browser bundle files ship in the tarball, and the library/CLI/browser entry points each actually convert HTML to a valid `.docx`.
 - **`guard:computed-parity`** — computed-oracle and computed-native must emit byte-identical OOXML for identical HTML. This is what backs the claim that the "native" lane (a Playwright-driven stand-in used in the test harness) faithfully represents the real browser deployment.
 - **`guard:browser-parity`** — chained script (`build:browser && browser-spike.ts && browser-build-parity.ts`) asserting the esbuild browser IIFE bundle (`dom-docx/browser`) produces byte-identical output to the Node computed-native path.
@@ -111,6 +112,7 @@ npm run guard:ci                 # all CI-safe guards below, in one run (what CI
 
 npm run guard:inline             # CI
 npm run guard:config             # CI
+npm run guard:fields             # CI (sample DOCX → output/guards/fields/)
 npm run guard:toc-slot           # CI
 npm run guard:internal-href      # CI
 npm run guard:document-canvas    # CI (Playwright section optional)
@@ -121,7 +123,7 @@ npm run guard:computed-parity    # maintainer-only, needs Playwright
 npm run guard:browser-parity     # maintainer-only, needs Playwright + a built bundle
 ```
 
-`guard:ci` (`scripts/guard-ci.mjs`) is a thin wrapper that runs the seven CI-safe guards; the CI-safe list lives only in that file's `GUARDS` array. Unlike a fail-fast `&&` chain it runs every guard even after one fails and prints a summary, so a broken build surfaces all failures at once. The individual `guard:*` scripts stay runnable on their own for local iteration.
+`guard:ci` (`scripts/guard-ci.mjs`) is a thin wrapper that runs the eight CI-safe guards; the CI-safe list lives only in that file's `GUARDS` array. Unlike a fail-fast `&&` chain it runs every guard even after one fails and prints a summary, so a broken build surfaces all failures at once. The individual `guard:*` scripts stay runnable on their own for local iteration.
 
 ### 4. Research tools — validate the metric itself, not the converter
 
@@ -159,7 +161,7 @@ Scoring methodology: [docs/SCORING.md](./docs/SCORING.md). HTML authoring guide:
 
 ## Release to npm
 
-CI (`.github/workflows/ci.yml`) runs on every push/PR: typecheck, build, browser bundle, and `guard:ci` (the seven CI-safe guards) — no Playwright or LibreOffice.
+CI (`.github/workflows/ci.yml`) runs on every push/PR: typecheck, build, browser bundle, and `guard:ci` (the eight CI-safe guards) — no Playwright or LibreOffice.
 
 Before a release commit or tag, run the full local gauntlet:
 

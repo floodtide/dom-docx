@@ -16,6 +16,7 @@ import { spawnSync } from "node:child_process";
 const GUARDS = [
   "guard:inline",
   "guard:config",
+  "guard:fields",
   "guard:toc-slot",
   "guard:internal-href",
   "guard:document-canvas",

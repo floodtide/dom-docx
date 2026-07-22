@@ -163,7 +163,7 @@ Each `npm run score:suite` run writes **`output/suite/results.json`** — the ma
 | **Next** | Iterate on lowest-scoring cases (`cases[].engineScore`) |
 
 **Exit codes:** `0` = loop completed (metrics recorded). `1` = XML failure or runtime error.  
-Use `npm run score:suite:strict` for zero-tolerance pixel CI (`--strict-visual`).
+Use `npm run score:suite:strict` for zero-tolerance **pixel regression** vs your local baseline (`--strict-visual`); pin the baseline after accepting a deliberate visual change (`npm run score:pin`).
 
 ---
 

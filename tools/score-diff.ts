@@ -26,10 +26,43 @@ const THRESHOLD = 0.5;
 interface CaseScore {
   name: string;
   visualScore?: number;
+  mismatchedPixels?: number;
+}
+interface CasePixelTripwire {
+  name: string;
+  mismatchedPixels?: number;
 }
 interface Results {
   cases: CaseScore[];
   totalCaseCount?: number;
+}
+
+export interface PixelRegression {
+  name: string;
+  before: number;
+  after: number;
+  delta: number;
+}
+
+/** Strict visual mode: fail only when raw pixel tripwire counts increase vs baseline. */
+export async function findPixelRegressions(cases: CasePixelTripwire[]): Promise<PixelRegression[]> {
+  const baseline = await load(BASELINE);
+  if (!baseline) return [];
+
+  const baseMap = new Map<string, number>();
+  for (const c of baseline.cases) {
+    if (typeof c.mismatchedPixels === "number") baseMap.set(c.name, c.mismatchedPixels);
+  }
+
+  const regressions: PixelRegression[] = [];
+  for (const c of cases) {
+    const after = c.mismatchedPixels ?? 0;
+    const before = baseMap.get(c.name);
+    if (before === undefined) continue;
+    if (after > before) regressions.push({ name: c.name, before, after, delta: after - before });
+  }
+  regressions.sort((a, b) => b.delta - a.delta);
+  return regressions;
 }
 
 async function load(file: string): Promise<Results | null> {

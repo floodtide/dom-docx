@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.1.18
+
+### Added
+
+- **Allowlisted Word fields in page chrome.** `headerHtml`, `footerHtml`, `coverHtml`, and `tocHtml` support `<span data-docx-field="page|pages|section-pages|section">` markers (case-insensitive) that emit native PAGE / NUMPAGES / SECTIONPAGES / SECTION fields with styled runs. `{page}` and `{pages}` sugar in chrome HTML and the `pageNumber: boolean | string` option lower to the same markers. Unknown field names warn and drop; body content cannot use fields in v1. Guard: `npm run guard:fields` (writes sample DOCX to `output/guards/fields/`). (Extends field-token work by Alexander Wilms.)
+
+### Fixed
+
+- **Computed-path `lineHeight` parity between Node and the browser bundle.** The Playwright snapshot script (`computed-style-snapshot.browser.js`) now reads `lineHeight` like the bundled snapshot, and UA-derived heading line-height is cleared when UA `fontSize` is stripped — so Node computed-native and `dist/browser/` emit the same `w:spacing/@w:line` twips. Caught by `guard:browser-parity` on `heading-hierarchy`.
+
+- **Chrome field tokens no longer dropped on paragraph flush.** Footer/header field spans passed `fieldOptions` through block visitors but not the paragraph `flush()` path, so `{page}` / `data-docx-field` markers in chrome HTML could silently vanish.
+
+### Changed
+
+- **`score:suite:strict` compares pixel tripwire counts against the local baseline** (zero tolerance for regression), not against zero misaligned pixels — matching how the suite baseline diff is meant to be read.
+
 ## 0.1.17
 
 ### Added

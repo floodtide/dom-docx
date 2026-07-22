@@ -131,6 +131,12 @@ function normalizeComputedUACss(element: Element, css: ParsedCss): ParsedCss {
       approxEquals(css.fontSize, uaFontHalfPoints, 1)
     ) {
       result.fontSize = undefined;
+      // lineHeight was parsed against the UA font size above; once that size is
+      // stripped (inline path never sees it), drop the derived multiplier too so
+      // heading line boxes fall back to DEFAULT_LINE_HEIGHT like the inline path.
+      if (!/\bline-height\s*:/i.test(inlineStyle)) {
+        result.lineHeight = undefined;
+      }
     }
     if (!/\bmargin(?:\s|:|-)/i.test(inlineStyle)) {
       const headingFontPx = (css.fontSize ?? uaFontHalfPoints) / 1.5;

@@ -60,6 +60,98 @@ export function patchTableCellSpacingOrder(documentXml: string): string {
   );
 }
 
+/**
+ * Replace `w:fldSimple` fields with the proper 5-run complex field structure
+ * (begin → instrText → separate → cached display run → end).
+ *
+ * `w:fldSimple` is simpler to emit but LibreOffice's OOXML importer drops the
+ * inner run's `w:rPr` — it creates a bare page-number element with no character
+ * style. Word-style 5-run complex fields preserve run properties when combined
+ * with named character styles (see patchChromeFieldFiles).
+ */
+export function patchFldSimple(xml: string): string {
+  return xml.replace(/<w:fldSimple w:instr="([^"]+)">([\s\S]*?)<\/w:fldSimple>/g, (_, instr, inner) => {
+    const rPrMatch = inner.match(/<w:rPr>([\s\S]*?)<\/w:rPr>/);
+    const rPr = rPrMatch ? `<w:rPr>${rPrMatch[1]}</w:rPr>` : "";
+    const tMatch = inner.match(/<w:t[^>]*>([\s\S]*?)<\/w:t>/);
+    const cachedVal = tMatch ? tMatch[1] : "1";
+    const instrTrimmed = instr.trim();
+    return (
+      `<w:r>${rPr}<w:fldChar w:fldCharType="begin" w:dirty="1"/></w:r>` +
+      `<w:r><w:instrText xml:space="preserve"> ${instrTrimmed} </w:instrText></w:r>` +
+      `<w:r><w:fldChar w:fldCharType="separate"/></w:r>` +
+      `<w:r>${rPr}<w:t>${cachedVal}</w:t></w:r>` +
+      `<w:r><w:fldChar w:fldCharType="end"/></w:r>`
+    );
+  });
+}
+
+/**
+ * Patch header/footer parts: fldSimple → complex fields, then promote field run
+ * rPr to FldS* named character styles so LibreOffice applies typography.
+ */
+export function patchChromeFieldFiles(files: Record<string, Uint8Array>): void {
+  const dec = new TextDecoder();
+  const enc = new TextEncoder();
+  const chromeKeys = Object.keys(files).filter((k) => /^word\/(footer|header)\d*\.xml$/.test(k));
+  if (chromeKeys.length === 0) return;
+
+  const compactToId = new Map<string, string>();
+  const idToRpr = new Map<string, string>();
+  let counter = 0;
+  const patchedChrome = new Map<string, string>();
+  for (const key of chromeKeys) {
+    const xml = patchFldSimple(dec.decode(files[key]!));
+    patchedChrome.set(key, xml);
+    for (const m of xml.matchAll(/<w:rPr>((?:[^<]|<(?!\/w:rPr>))*)<\/w:rPr><w:fldChar w:fldCharType="begin"/g)) {
+      const rPr = m[1]!;
+      const compact = rPr.replace(/\s+/g, "");
+      if (compact && !compactToId.has(compact)) {
+        const id = `FldS${counter++}`;
+        compactToId.set(compact, id);
+        idToRpr.set(id, rPr);
+      }
+    }
+  }
+
+  if (idToRpr.size === 0) {
+    for (const [key, xml] of patchedChrome) files[key] = enc.encode(xml);
+    return;
+  }
+
+  const rStyleRpr = (rPr: string): string => {
+    const id = compactToId.get(rPr.replace(/\s+/g, ""));
+    return id ? `<w:rPr><w:rStyle w:val="${id}"/></w:rPr>` : `<w:rPr>${rPr}</w:rPr>`;
+  };
+  for (const [key, xml] of patchedChrome) {
+    let patched = xml;
+    patched = patched.replace(
+      /<w:rPr>((?:[^<]|<(?!\/w:rPr>))*)<\/w:rPr>(<w:fldChar w:fldCharType="begin")/g,
+      (_, rPr, fldChar) => `${rStyleRpr(rPr)}${fldChar}`,
+    );
+    patched = patched.replace(
+      /(<w:r>)<w:rPr>((?:[^<]|<(?!\/w:rPr>))*)<\/w:rPr>(<w:t[^>]*>[\s\S]*?<\/w:t><\/w:r>(?=<w:r><w:fldChar w:fldCharType="end"))/g,
+      (_, open, rPr, rest) => `${open}${rStyleRpr(rPr)}${rest}`,
+    );
+    files[key] = enc.encode(patched);
+  }
+
+  if (!files["word/styles.xml"]) return;
+  const charStyles = [...idToRpr.entries()]
+    .map(
+      ([id, rPr]) =>
+        `<w:style w:type="character" w:customStyle="1" w:styleId="${id}">` +
+        `<w:name w:val="${id}"/>` +
+        `<w:basedOn w:val="DefaultParagraphFont"/>` +
+        `<w:rPr>${rPr}</w:rPr>` +
+        `</w:style>`,
+    )
+    .join("");
+  files["word/styles.xml"] = enc.encode(
+    dec.decode(files["word/styles.xml"]).replace("</w:styles>", `${charStyles}</w:styles>`),
+  );
+}
+
 export function patchDocumentXml(documentXml: string): string {
   return patchTableCellSpacingOrder(patchShadedParagraphVerticalAlign(documentXml));
 }

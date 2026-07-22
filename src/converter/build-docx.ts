@@ -1,14 +1,11 @@
 import {
-  AlignmentType,
   Document,
   Footer,
   Header,
   PageBreak,
-  PageNumber,
   Packer,
   PageOrientation,
   Paragraph,
-  TextRun,
   convertInchesToTwip,
   type FileChild,
 } from "docx";
@@ -16,7 +13,8 @@ import * as cheerio from "cheerio";
 import type { CheerioAPI } from "cheerio";
 import { unzipSync, zipSync } from "fflate";
 import { BODY_FONT, BODY_FONT_HALF_POINTS, NUMBERING_CONFIG, PAGE_MARGIN_TWIPS } from "./constants.js";
-import { patchDocumentXml, patchNumberingXml } from "./ooxml-patch.js";
+import { patchChromeFieldFiles, patchDocumentXml, patchNumberingXml } from "./ooxml-patch.js";
+import { injectFieldTokens, type InlineFieldOptions } from "./fields.js";
 import { applyImageResolver, hasUnresolvedSrc, resetImageDocPrIds, type ImageResolver } from "./image.js";
 import { INLINE_STYLE_RESOLVER, type StyleResolver } from "./style-resolver.js";
 import { htmlToDocxBlocks } from "./visitor.js";
@@ -86,8 +84,15 @@ export interface DocumentConfig {
   headerHtml?: string;
   /** HTML fragment rendered as the page footer. */
   footerHtml?: string;
-  /** Append a centered `Page N` field to the footer (created if `footerHtml` is absent). */
-  pageNumber?: boolean;
+  /**
+   * Append a page-number paragraph to the footer (created if `footerHtml` is absent).
+   * - `true` — shorthand for `"Page {page}"`
+   * - `string` — template with `{page}` and/or `{pages}` sugar, e.g. `"{page} / {pages}"`
+   *
+   * Prefer `<span data-docx-field="page">` markers in chrome HTML for full control;
+   * `{page}` / `{pages}` lower to the same markers. See allowlist in API.md.
+   */
+  pageNumber?: boolean | string;
   /** Document language (spell-check locale), e.g. `"en-US"`, `"ar-SA"`. */
   lang?: string;
   /** Text direction; `"rtl"` sets right-to-left paragraphs. */
@@ -174,17 +179,18 @@ function resolveDocumentConfig(config?: DocumentConfig): ResolvedConfig {
   };
 }
 
-/** Convert a standalone HTML fragment (header/footer) to DOCX blocks via the inline resolver. */
-function fragmentToBlocks(html: string, sizeHalfPoints: number): FileChild[] {
-  const $ = cheerio.load(`<body>${html.trim()}</body>`, { xml: false });
-  return htmlToDocxBlocks($, INLINE_STYLE_RESOLVER, sizeHalfPoints);
+/** Convert a standalone HTML fragment (header/footer/cover/toc) to DOCX blocks via the inline resolver. */
+function fragmentToBlocks(
+  html: string,
+  sizeHalfPoints: number,
+  fieldOptions: InlineFieldOptions,
+): FileChild[] {
+  const $ = cheerio.load(`<body>${injectFieldTokens(html.trim())}</body>`, { xml: false });
+  return htmlToDocxBlocks($, INLINE_STYLE_RESOLVER, sizeHalfPoints, fieldOptions);
 }
 
-function pageNumberParagraph(): Paragraph {
-  return new Paragraph({
-    alignment: AlignmentType.CENTER,
-    children: [new TextRun("Page "), new TextRun({ children: [PageNumber.CURRENT] })],
-  });
+function chromeFieldOptions(warn: WarningHandler): InlineFieldOptions {
+  return { enabled: true, onWarning: warn };
 }
 
 /**
@@ -194,9 +200,13 @@ function pageNumberParagraph(): Paragraph {
  * caller adds a trailing page break in the fragment if they want it on its own
  * page. Returns `[]` when no `tocHtml` is configured.
  */
-function buildTocSlot(config: DocumentConfig | undefined, resolved: ResolvedConfig): FileChild[] {
+function buildTocSlot(
+  config: DocumentConfig | undefined,
+  resolved: ResolvedConfig,
+  warn: WarningHandler,
+): FileChild[] {
   if (!config?.tocHtml) return [];
-  return fragmentToBlocks(config.tocHtml, resolved.fontHalfPoints);
+  return fragmentToBlocks(config.tocHtml, resolved.fontHalfPoints, chromeFieldOptions(warn));
 }
 
 /**
@@ -204,27 +214,52 @@ function buildTocSlot(config: DocumentConfig | undefined, resolved: ResolvedConf
  * TOC/body start on the next page. Converted via the inline style path (like
  * header/footer). Returns `[]` when no `coverHtml` is configured.
  */
-function buildCover(config: DocumentConfig | undefined, resolved: ResolvedConfig): FileChild[] {
+function buildCover(
+  config: DocumentConfig | undefined,
+  resolved: ResolvedConfig,
+  warn: WarningHandler,
+): FileChild[] {
   if (!config?.coverHtml) return [];
   return [
-    ...fragmentToBlocks(config.coverHtml, resolved.fontHalfPoints),
+    ...fragmentToBlocks(config.coverHtml, resolved.fontHalfPoints, chromeFieldOptions(warn)),
     new Paragraph({ children: [new PageBreak()] }),
   ];
 }
 
-function buildFooter(config: DocumentConfig | undefined, resolved: ResolvedConfig): Footer | undefined {
+function buildFooter(
+  config: DocumentConfig | undefined,
+  resolved: ResolvedConfig,
+  warn: WarningHandler,
+): Footer | undefined {
   const hasFooterHtml = Boolean(config?.footerHtml);
-  if (!hasFooterHtml && !config?.pageNumber) return undefined;
+  const pnTemplate =
+    config?.pageNumber === true
+      ? "Page {page}"
+      : typeof config?.pageNumber === "string"
+        ? config.pageNumber
+        : null;
+  if (!hasFooterHtml && pnTemplate === null) return undefined;
+  const fieldOpts = chromeFieldOptions(warn);
   const children: FileChild[] = hasFooterHtml
-    ? fragmentToBlocks(config!.footerHtml!, resolved.fontHalfPoints)
+    ? fragmentToBlocks(config!.footerHtml!, resolved.fontHalfPoints, fieldOpts)
     : [];
-  if (config?.pageNumber) children.push(pageNumberParagraph());
+  if (pnTemplate !== null) {
+    const isPlainTemplate = !pnTemplate.trimStart().startsWith("<");
+    const html = isPlainTemplate ? `<p style="text-align:center">${pnTemplate}</p>` : pnTemplate;
+    children.push(...fragmentToBlocks(html, resolved.fontHalfPoints, fieldOpts));
+  }
   return new Footer({ children });
 }
 
-function buildHeader(config: DocumentConfig | undefined, resolved: ResolvedConfig): Header | undefined {
+function buildHeader(
+  config: DocumentConfig | undefined,
+  resolved: ResolvedConfig,
+  warn: WarningHandler,
+): Header | undefined {
   if (!config?.headerHtml) return undefined;
-  return new Header({ children: fragmentToBlocks(config.headerHtml, resolved.fontHalfPoints) });
+  return new Header({
+    children: fragmentToBlocks(config.headerHtml, resolved.fontHalfPoints, chromeFieldOptions(warn)),
+  });
 }
 
 async function packDocxToUint8Array(
@@ -297,12 +332,13 @@ async function packDocxToUint8Array(
 
 function patchPackedDocx(packed: Uint8Array): Uint8Array {
   const files = unzipSync(packed);
-  const documentXml = new TextDecoder().decode(files["word/document.xml"]);
+  const documentXml = new TextDecoder().decode(files["word/document.xml"]!);
   files["word/document.xml"] = new TextEncoder().encode(patchDocumentXml(documentXml));
   if (files["word/numbering.xml"]) {
     const numberingXml = new TextDecoder().decode(files["word/numbering.xml"]);
     files["word/numbering.xml"] = new TextEncoder().encode(patchNumberingXml(numberingXml));
   }
+  patchChromeFieldFiles(files);
   return zipSync(files);
 }
 
@@ -316,16 +352,21 @@ export async function buildDocxUint8Array(
 ): Promise<Uint8Array> {
   resetImageDocPrIds();
   const resolved = resolveDocumentConfig(documentConfig);
+  const warn = resolveWarningHandler(onWarning);
   const $ = cheerio.load(`<body>${html.trim()}</body>`, { xml: false });
   if (imageResolver) await applyImageResolver($, imageResolver);
-  emitDegradationWarnings($, styleResolver, Boolean(imageResolver), resolveWarningHandler(onWarning));
-  const children = htmlToDocxBlocks($, styleResolver, resolved.fontHalfPoints);
-  const chrome = {
-    header: buildHeader(documentConfig, resolved),
-    footer: buildFooter(documentConfig, resolved),
+  emitDegradationWarnings($, styleResolver, Boolean(imageResolver), warn);
+  const bodyFieldOptions: InlineFieldOptions = {
+    enabled: false,
+    onWarning: warn,
   };
-  const coverBlocks = buildCover(documentConfig, resolved);
-  const tocSlotBlocks = buildTocSlot(documentConfig, resolved);
+  const children = htmlToDocxBlocks($, styleResolver, resolved.fontHalfPoints, bodyFieldOptions);
+  const chrome = {
+    header: buildHeader(documentConfig, resolved, warn),
+    footer: buildFooter(documentConfig, resolved, warn),
+  };
+  const coverBlocks = buildCover(documentConfig, resolved, warn);
+  const tocSlotBlocks = buildTocSlot(documentConfig, resolved, warn);
   const packed = await packDocxToUint8Array(children, resolved, chrome, coverBlocks, tocSlotBlocks);
   return patchPackedDocx(packed);
 }

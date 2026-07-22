@@ -67,6 +67,7 @@ import type { BlockLayout, DocxBlock, RunTypography, VisitorContext } from "./ty
 import { DEFAULT_VISITOR_CONTEXT } from "./types.js";
 import type { StyleResolver } from "./style-resolver.js";
 import { INLINE_STYLE_RESOLVER } from "./style-resolver.js";
+import type { InlineFieldOptions } from "./fields.js";
 
 function isElement(node: AnyNode): node is Element {
   return node.type === "tag";
@@ -586,6 +587,7 @@ function emitFlowBlocks(
       undefined,
       ctx.styleResolver,
       ctx.defaultSizeHalfPoints,
+      ctx.fieldOptions,
     );
     // Pretty-printed HTML adds whitespace text nodes around block children; browsers
     // collapse them, but an empty flush would become an emptyRun paragraph — and in
@@ -828,7 +830,7 @@ function processFlexContainer(
       minHeightTwips: itemCss.minHeightTwips,
       blocks: [
         makeParagraph(
-          collectInlineRunsFromNodes(item.children ?? [], typography, undefined, ctx.styleResolver, ctx.defaultSizeHalfPoints),
+          collectInlineRunsFromNodes(item.children ?? [], typography, undefined, ctx.styleResolver, ctx.defaultSizeHalfPoints, ctx.fieldOptions),
           { alignment: itemLayout.alignment },
           { flexCompact: true },
         ),
@@ -921,7 +923,7 @@ function processBlockContainer(
     let forceBreakBefore = Boolean(layout.pageBreakBefore);
     const flushInline = (): void => {
       if (pendingInline.length === 0) return;
-      const runs = collectInlineRunsFromNodes(pendingInline, typography, undefined, ctx.styleResolver, ctx.defaultSizeHalfPoints);
+      const runs = collectInlineRunsFromNodes(pendingInline, typography, undefined, ctx.styleResolver, ctx.defaultSizeHalfPoints, ctx.fieldOptions);
       if (runs.length > 0) {
         // First emitted block carries the container's top margin (e.g. `<figure margin:8px>`).
         const isFirst = blocks.length === 0;
@@ -1098,7 +1100,7 @@ function processListItem(
   if (inlineNodes.length > 0) {
     blocks.push(
       ...emitBlockContent(
-        collectInlineRunsFromNodes(inlineNodes, typography, undefined, ctx.styleResolver, ctx.defaultSizeHalfPoints),
+        collectInlineRunsFromNodes(inlineNodes, typography, undefined, ctx.styleResolver, ctx.defaultSizeHalfPoints, ctx.fieldOptions),
         layout,
         extra,
       ),
@@ -1184,7 +1186,7 @@ function processHeading($: CheerioAPI, element: Element, ctx: VisitorContext): D
     : layout;
 
   return emitBlockContent(
-    collectInlineRunsFromNodes(element.children ?? [], typography, undefined, ctx.styleResolver, ctx.defaultSizeHalfPoints),
+    collectInlineRunsFromNodes(element.children ?? [], typography, undefined, ctx.styleResolver, ctx.defaultSizeHalfPoints, ctx.fieldOptions),
     headingLayout,
     hasBlockShading ? {} : { heading: HEADING_LEVELS[tag], atLeastLineTwips: atLeastLineTwips(fontSize, layout.lineHeight) },
     element,
@@ -1216,7 +1218,7 @@ function processBlockquote($: CheerioAPI, element: Element, ctx: VisitorContext)
   } else {
     const typography = typographyFromBlockElement(element, ctx.styleResolver);
     blocks = emitBlockContent(
-      collectInlineRunsFromNodes(element.children ?? [], typography, undefined, ctx.styleResolver, ctx.defaultSizeHalfPoints),
+      collectInlineRunsFromNodes(element.children ?? [], typography, undefined, ctx.styleResolver, ctx.defaultSizeHalfPoints, ctx.fieldOptions),
       quoteLayout,
       {},
       element,
@@ -1374,6 +1376,7 @@ export function visitElement(
               undefined,
               ctx.styleResolver,
               ctx.defaultSizeHalfPoints,
+              ctx.fieldOptions,
             ),
             { alignment: AlignmentType.CENTER },
           ),
@@ -1416,7 +1419,7 @@ export function visitNodes(
     if (pendingInline.length === 0) return;
     blocks.push(
       makeParagraph(
-        collectInlineRunsFromNodes(pendingInline, {}, undefined, ctx.styleResolver, ctx.defaultSizeHalfPoints),
+        collectInlineRunsFromNodes(pendingInline, {}, undefined, ctx.styleResolver, ctx.defaultSizeHalfPoints, ctx.fieldOptions),
         {
           ...(ctx.inheritedLayout ?? {}),
           ...(breakBeforeNext ? { pageBreakBefore: true } : {}),
@@ -1481,8 +1484,9 @@ export function htmlToDocxBlocks(
   $: CheerioAPI,
   styleResolver: StyleResolver = INLINE_STYLE_RESOLVER,
   defaultSizeHalfPoints: number = DEFAULT_VISITOR_CONTEXT.defaultSizeHalfPoints,
+  fieldOptions?: InlineFieldOptions,
 ): FileChild[] {
-  const ctx: VisitorContext = { ...DEFAULT_VISITOR_CONTEXT, styleResolver, defaultSizeHalfPoints };
+  const ctx: VisitorContext = { ...DEFAULT_VISITOR_CONTEXT, styleResolver, defaultSizeHalfPoints, fieldOptions };
   const nodes = $("body").contents().toArray();
   const blocks = separateAdjacentTables(visitNodes($, nodes, ctx));
 

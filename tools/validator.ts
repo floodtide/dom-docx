@@ -33,7 +33,7 @@ import {
 import type { ListMarkerFidelityDetail } from "./list-marker-fidelity.js";
 import { captureEnvironment, type HarnessEnvironment } from "./environment.js";
 import { SUITE_OUTPUT } from "./output-paths.js";
-import { printBaselineDiff } from "./score-diff.js";
+import { findPixelRegressions, printBaselineDiff } from "./score-diff.js";
 
 const OUTPUT_DIR = SUITE_OUTPUT;
 const STRICT_VISUAL = process.argv.includes("--strict-visual");
@@ -486,11 +486,19 @@ async function main(): Promise<void> {
     await printBaselineDiff();
 
     const hardFailures = results.filter((r) => !r.xmlPassed || r.error);
-    const visualFailures = results.filter((r) => (r.mismatchedPixels ?? 0) > 0);
+    const pixelRegressions = STRICT_VISUAL ? await findPixelRegressions(results) : [];
+    if (STRICT_VISUAL && pixelRegressions.length > 0) {
+      console.log("\nStrict pixel regressions vs baseline:");
+      for (const r of pixelRegressions) {
+        console.log(
+          `  ✗ ${r.name}: ${r.before.toLocaleString()} → ${r.after.toLocaleString()} (+${r.delta.toLocaleString()} px)`,
+        );
+      }
+    }
 
     if (hardFailures.length > 0) {
       process.exitCode = 1;
-    } else if (STRICT_VISUAL && visualFailures.length > 0) {
+    } else if (STRICT_VISUAL && pixelRegressions.length > 0) {
       process.exitCode = 1;
     } else {
       process.exitCode = 0;

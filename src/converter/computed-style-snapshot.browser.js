@@ -27,6 +27,7 @@
     "rowGap",
     "textAlign",
     "fontSize",
+    "lineHeight",
     "fontWeight",
     "fontStyle",
     "textTransform",

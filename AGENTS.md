@@ -296,6 +296,33 @@ table Owner | Action | Status with row backgrounds
 
 ---
 
+## Page chrome fields (headers / footers)
+
+Dynamic page numbers and section counts belong in **`headerHtml`**, **`footerHtml`**, **`coverHtml`**, or **`tocHtml`** — not in the body fragment. Use native Word fields via a marker span (the primitive):
+
+```html
+<!-- footerHtml example -->
+<p style="text-align:right;font-size:11px;color:#666">
+  Page <span style="font-weight:bold" data-docx-field="page"></span>
+  of <span data-docx-field="pages"></span>
+</p>
+```
+
+**Allowlist** — `data-docx-field` accepts exactly these names (case-insensitive):
+
+| Value | Meaning |
+|-------|---------|
+| `page` | Current page number |
+| `pages` | Total page count |
+| `section-pages` | Pages in the current section |
+| `section` | Current section number |
+
+**Sugar:** `{page}` and `{pages}` in chrome HTML or in the `pageNumber` option string lower to the same markers. `pageNumber: true` is shorthand for `"Page {page}"`.
+
+**Not supported:** arbitrary Word fields (merge fields, dates, doc properties, external links). Those values are known at convert time or belong in your source HTML as plain text — put the date, author name, title, or merge placeholder string directly in the body or chrome markup (e.g. `<p>March 14, 2026</p>`, `<span>© 2026 ACME</span>`) rather than as a live field. Unknown `data-docx-field` values emit a warning and are dropped. Body content cannot use fields in v1.
+
+---
+
 ## Agent checklist before convert
 
 - [ ] Fragment is **body content only** (no `<!DOCTYPE>`, scripts, or external CSS)
