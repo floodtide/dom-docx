@@ -15,25 +15,25 @@ All libraries use the **same visual harness**: human-validated layout fidelity p
 
 ---
 
-## Suite summary (49 cases)
+## Suite summary (50 cases)
 
 | Metric | html-to-docx | @turbodocx/html-to-docx | dom-docx |
 |--------|---:|---:|---:|
-| XML schema pass | 0 / 49 | 0 / 49 | **49 / 49** |
-| Avg **visual (layout-based)** | 64.73% | 65.66% | **96.59%** |
-| Avg editability | 100.00 | 100.00 | 99.39 |
-| Avg engine score | 82.26 | 82.46 | **95.00** |
-| Avg compile | 10.9 ms | 14.5 ms | 44.2 ms |
+| XML schema pass | 0 / 50 | 0 / 50 | **50 / 50** |
+| Avg **visual (layout-based)** | 64.71% | 65.62% | **96.61%** |
+| Avg editability | 100.00 | 100.00 | 99.20 |
+| Avg engine score | 82.23 | 82.47 | **95.77** |
+| Avg compile | 10.9 ms | 13.8 ms | 39.6 ms |
 
 Δ vs dom-docx (library − dom-docx):
 
 | Library | Δ visual | Δ engine |
 |---------|---------:|---------:|
-| html-to-docx | **-31.86** | -12.74 |
-| @turbodocx/html-to-docx | **-30.93** | -12.54 |
+| html-to-docx | **-31.89** | -13.54 |
+| @turbodocx/html-to-docx | **-30.99** | -13.30 |
 
-**dom-docx wins 46 / 49 cases** against html-to-docx (higher layout-based visual score).
-**dom-docx wins 45 / 49 cases** against @turbodocx/html-to-docx (higher layout-based visual score).
+**dom-docx wins 47 / 50 cases** against html-to-docx (higher layout-based visual score).
+**dom-docx wins 46 / 50 cases** against @turbodocx/html-to-docx (higher layout-based visual score).
 
 ---
 
@@ -55,24 +55,25 @@ All libraries use the **same visual harness**: human-validated layout fidelity p
 | `table-colgroup-widths` | ✗ | 47.29% | 97.59% | -50.30 |
 | `unicode-emoji-content` | ✗ | 49.01% | 96.44% | -47.43 |
 | `flex-row-horizontal` | ✗ | 51.89% | 97.28% | -45.39 |
-| `table-physical-unit-widths` | ✗ | 53.02% | 97.50% | -44.48 |
+| `table-physical-unit-widths` | ✗ | 53.02% | 97.51% | -44.49 |
 | `flex-row-images` | ✗ | 53.34% | 96.75% | -43.41 |
 | `mixed-margins-paddings` | ✗ | 52.79% | 95.68% | -42.89 |
 | `css-length-units` | ✗ | 55.60% | 97.00% | -41.40 |
-| `adjacent-tables` | ✗ | 57.23% | 96.93% | -39.70 |
+| `adjacent-tables` | ✗ | 57.23% | 96.94% | -39.71 |
 | `inline-vs-block` | ✗ | 60.26% | 98.35% | -38.09 |
 | `table-vertical-text` | ✗ | 45.20% | 82.49% | -37.29 |
 | `table-mismatched-cells` | ✗ | 60.64% | 97.34% | -36.70 |
 | `simple-table-2x2` | ✗ | 61.99% | 96.98% | -34.99 |
-| `table-cell-padding` | ✗ | 62.83% | 97.14% | -34.31 |
+| `table-cell-padding` | ✗ | 62.83% | 97.15% | -34.32 |
+| `bordered-shaded-div-width-percent` | ✗ | 63.81% | 97.40% | -33.59 |
 | `simple-table-3col` | ✗ | 64.10% | 97.46% | -33.36 |
 | `horizontal-rule` | ✗ | 66.12% | 94.64% | -28.52 |
 | `modal-dialog-skipped` | ✗ | 71.93% | 95.15% | -23.22 |
-| `basic-inline-formatting` | ✗ | 74.62% | 97.38% | -22.76 |
-| `pre-code-block` | ✗ | 74.85% | 97.15% | -22.30 |
+| `basic-inline-formatting` | ✗ | 74.62% | 97.39% | -22.77 |
+| `pre-code-block` | ✗ | 74.85% | 97.16% | -22.31 |
 | `heading-hierarchy` | ✗ | 75.33% | 97.20% | -21.87 |
 | `simple-unordered-list` | ✗ | 77.16% | 97.27% | -20.11 |
-| `inline-backgrounds` | ✗ | 83.65% | 97.76% | -14.11 |
+| `inline-backgrounds` | ✗ | 83.65% | 97.77% | -14.12 |
 | `table-empty-cell-row-height` | ✗ | 78.28% | 91.58% | -13.30 |
 | `paragraph-and-list` | ✗ | 84.12% | 97.01% | -12.89 |
 | `multiple-links` | ✗ | 86.24% | 96.59% | -10.35 |
@@ -85,7 +86,7 @@ All libraries use the **same visual harness**: human-validated layout fidelity p
 | `ordered-list-upper-roman` | ✗ | 93.44% | 97.12% | -3.68 |
 | `simple-blockquote` | ✗ | 93.88% | 97.44% | -3.56 |
 | `ordered-list-lower-alpha` | ✗ | 94.31% | 97.30% | -2.99 |
-| `simple-ordered-list` | ✗ | 95.28% | 97.23% | -1.95 |
+| `simple-ordered-list` | ✗ | 95.28% | 97.24% | -1.96 |
 | `image-block` | ✗ | 98.10% | 98.75% | -0.65 |
 | `simple-link` | ✗ | 96.61% | 96.49% | +0.12 |
 | `plain-paragraph` | ✗ | 96.98% | 96.84% | +0.14 |
@@ -106,36 +107,37 @@ All libraries use the **same visual harness**: human-validated layout fidelity p
 | `table-colgroup-widths` | ✗ | 44.72% | 97.59% | -52.87 |
 | `flex-row-horizontal` | ✗ | 46.38% | 97.28% | -50.90 |
 | `modal-dialog-skipped` | ✗ | 45.51% | 95.15% | -49.64 |
-| `table-physical-unit-widths` | ✗ | 49.85% | 97.50% | -47.65 |
+| `table-physical-unit-widths` | ✗ | 49.85% | 97.51% | -47.66 |
 | `borderless-table` | ✗ | 49.51% | 96.97% | -47.46 |
 | `flex-row-images` | ✗ | 50.82% | 96.75% | -45.93 |
 | `inline-vs-block` | ✗ | 55.46% | 98.35% | -42.89 |
-| `adjacent-tables` | ✗ | 54.70% | 96.93% | -42.23 |
+| `adjacent-tables` | ✗ | 54.70% | 96.94% | -42.24 |
 | `table-mismatched-cells` | ✗ | 57.20% | 97.34% | -40.14 |
 | `simple-table-2x2` | ✗ | 57.99% | 96.98% | -38.99 |
 | `simple-table-3col` | ✗ | 59.25% | 97.46% | -38.21 |
 | `css-length-units` | ✗ | 59.15% | 97.00% | -37.85 |
 | `table-vertical-text` | ✗ | 45.01% | 82.49% | -37.48 |
-| `table-cell-padding` | ✗ | 61.61% | 97.14% | -35.53 |
+| `table-cell-padding` | ✗ | 61.61% | 97.15% | -35.54 |
+| `bordered-shaded-div-width-percent` | ✗ | 63.81% | 97.40% | -33.59 |
 | `mixed-margins-paddings` | ✗ | 62.11% | 95.68% | -33.57 |
 | `unordered-list-square` | ✗ | 69.16% | 96.89% | -27.73 |
 | `ordered-list-lower-alpha` | ✗ | 69.97% | 97.30% | -27.33 |
 | `simple-unordered-list` | ✗ | 70.00% | 97.27% | -27.27 |
 | `ordered-list-upper-roman` | ✗ | 69.97% | 97.12% | -27.15 |
 | `table-row-backgrounds` | ✗ | 72.19% | 98.73% | -26.54 |
-| `basic-inline-formatting` | ✗ | 71.81% | 97.38% | -25.57 |
+| `basic-inline-formatting` | ✗ | 71.81% | 97.39% | -25.58 |
 | `image-block` | ✗ | 74.17% | 98.75% | -24.58 |
 | `paragraph-and-list` | ✗ | 72.59% | 97.01% | -24.42 |
 | `horizontal-rule` | ✗ | 72.33% | 94.64% | -22.31 |
-| `pre-code-block` | ✗ | 77.42% | 97.15% | -19.73 |
+| `pre-code-block` | ✗ | 77.42% | 97.16% | -19.74 |
 | `heading-hierarchy` | ✗ | 78.34% | 97.20% | -18.86 |
 | `unicode-emoji-content` | ✗ | 77.67% | 96.44% | -18.77 |
 | `table-empty-cell-row-height` | ✗ | 78.05% | 91.58% | -13.53 |
 | `table-cell-bar-divs` | ✗ | 89.32% | 98.74% | -9.42 |
-| `simple-ordered-list` | ✗ | 93.28% | 97.23% | -3.95 |
+| `simple-ordered-list` | ✗ | 93.28% | 97.24% | -3.96 |
 | `ordered-list-rich-inline` | ✗ | 93.97% | 97.91% | -3.94 |
 | `simple-blockquote` | ✗ | 93.82% | 97.44% | -3.62 |
-| `inline-backgrounds` | ✗ | 96.67% | 97.76% | -1.09 |
+| `inline-backgrounds` | ✗ | 96.67% | 97.77% | -1.10 |
 | `vertical-align-super-sub` | ✗ | 96.67% | 97.41% | -0.74 |
 | `line-height-presets` | ✗ | 96.72% | 97.34% | -0.62 |
 | `multiple-paragraphs` | ✗ | 96.87% | 97.31% | -0.44 |
@@ -149,7 +151,7 @@ All libraries use the **same visual harness**: human-validated layout fidelity p
 
 | Library | `simple-unordered-list` | `simple-ordered-list` | `ordered-list-rich-inline` | `paragraph-and-list` | `nested-blockquotes-lists` | `unicode-emoji-content` | `ordered-list-lower-alpha` | `ordered-list-upper-roman` | `unordered-list-square` |
 |---------|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| dom-docx | **97.27%** | **97.23%** | **97.91%** | **97.01%** | **91.48%** | **96.44%** | **97.30%** | **97.12%** | **96.89%** |
+| dom-docx | **97.27%** | **97.24%** | **97.91%** | **97.01%** | **91.48%** | **96.44%** | **97.30%** | **97.12%** | **96.89%** |
 | html-to-docx | 77.16% | 95.28% | 90.66% | 84.12% | 12.11% | 49.01% | 94.31% | 93.44% | 86.71% |
 | @turbodocx/html-to-docx | 70.00% | 93.28% | 93.97% | 72.59% | 11.51% | 77.67% | 69.97% | 69.97% | 69.16% |
 
@@ -189,13 +191,13 @@ Regenerate: `npm run score:css-cascade`.
 <!-- SECTION:guard-status:START -->
 | Guard | Status | Result | Command |
 |-------|:------:|--------|---------|
-| Browser bundle parity | ✅ | 49/49 equivalent to Node computed-native | `npm run guard:browser-parity` |
-| Computed parity (oracle vs native) | ✅ | 49/49 byte-identical | `npm run guard:computed-parity` |
+| Browser bundle parity | ✅ | 50/50 equivalent to Node computed-native | `npm run guard:browser-parity` |
+| Computed parity (oracle vs native) | ✅ | 50/50 byte-identical | `npm run guard:computed-parity` |
 | Config options | ✅ | 80/80 checks passed (node + browser) | `npm run guard:config` |
 | Document canvas colors | ✅ | 18/18 structural checks | `npm run guard:document-canvas` |
 | Allowlisted Word fields | ✅ | 27/27 field OOXML + warnings | `npm run guard:fields` |
 | Image spacing | ✅ | 5/5 flow images floored, flex images tight | `npm run guard:image-spacing` |
-| Inline path | ✅ | 49/49 equivalent (default vs explicit inline) | `npm run guard:inline` |
+| Inline path | ✅ | 50/50 equivalent (default vs explicit inline) | `npm run guard:inline` |
 | Internal hrefs | ✅ | 16/16 structural checks | `npm run guard:internal-href` |
 | Mixed orientation | ✅ | 14/14 per-section w:pgSz + optional PDF | `npm run guard:mixed-orientation` |
 | Pack smoke | ✅ | 1/1 library + CLI + browser entry install and convert | `npm run guard:pack-smoke` |

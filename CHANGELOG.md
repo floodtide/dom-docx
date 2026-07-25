@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.1.21
+
+### Fixed
+
+- **Bordered/shaded `<div>` blocks now respect `width: 50%` (and other percentage/explicit widths).** Wrapper tables were always full page width; CSS width fields are now carried through `BlockLayout` and resolved against the printable content width. Also fixes padding being discarded, horizontal margin not insetting content, and line-box height on shaded/bordered cells. Suite case: `bordered-shaded-div-width-percent`. (Thanks to Alexander Wilms.)
+
 ## 0.1.20
 
 Update package name to include **docx** in title for better discovery.

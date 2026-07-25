@@ -6,14 +6,14 @@ To generate suite metrics, run `npm run score:suite` then `npm run docs:sync`. *
 
 ## Summary
 
-| Metric | Standard (22) | Edge (27) | All (49) |
+| Metric | Standard (22) | Edge (28) | All (50) |
 |--------|---------------|-----------|----------|
-| XML schema pass | 22 / 22 | 27 / 27 | **49 / 49** |
-| Avg **visual (layout-based)** | 97.05% | 96.22% | **96.59%** |
-| Avg raw layout (pre-guards) | 97.05% | 96.31% | **96.64%** |
-| Avg pixel match (tripwire, unscored) | 89.68% | 93.55% | **91.81%** |
-| Avg engine score | 95.01 | 94.99 | **95.00** |
-| Avg compile | — | — | **44.2 ms** |
+| XML schema pass | 22 / 22 | 28 / 28 | **50 / 50** |
+| Avg **visual (layout-based)** | 97.05% | 96.26% | **96.61%** |
+| Avg raw layout (pre-guards) | 97.05% | 96.35% | **96.66%** |
+| Avg pixel match (tripwire, unscored) | 89.69% | 93.63% | **91.90%** |
+| Avg engine score | 96.21 | 95.43 | **95.77** |
+| Avg compile | — | — | **39.6 ms** |
 | Identity-pair calibration (full 10) | — | — | **mean 97.21% / min 96.42%** |
 
 Tables below use the **layout-based visual** score; misaligned px is the raw pixel tripwire.
@@ -25,21 +25,21 @@ Tables below use the **layout-based visual** score; misaligned px is the raw pix
 | Test | Description | XML | Visual | Misaligned px |
 |------|-------------|-----|--------|---------------|
 | `plain-paragraph` | Single unstyled `<p>` | ✓ | 96.84% | 1,360 |
-| `multiple-paragraphs` | Three sequential paragraphs | ✓ | 97.31% | 2,743 |
+| `multiple-paragraphs` | Three sequential paragraphs | ✓ | 97.31% | 2,741 |
 | `heading-hierarchy` | h1 / h2 / h3 with body text | ✓ | 97.20% | 4,959 |
 | `simple-unordered-list` | Basic `<ul>` with 3 items | ✓ | 97.27% | 739 |
-| `simple-ordered-list` | Basic `<ol>` with 3 items | ✓ | 97.23% | 1,582 |
+| `simple-ordered-list` | Basic `<ol>` with 3 items | ✓ | 97.24% | 1,582 |
 | `ordered-list-rich-inline` | `<ol>` with `<strong>` + highlighted `<span>` per item | ✓ | 97.91% | 3,554 |
 | `paragraph-and-list` | Intro paragraph + `<ul>` | ✓ | 97.01% | 1,239 |
 | `simple-link` | One hyperlinked anchor | ✓ | 96.49% | 1,218 |
 | `multiple-links` | Two links in one sentence | ✓ | 96.59% | 1,278 |
-| `basic-inline-formatting` | `<strong>`, `<em>`, nested bold-italic, and explicit CSS cancellation inside inherited styles | ✓ | 97.38% | 10,885 |
-| `pre-code-block` | Fenced `<pre><code>` + inline `<code>` | ✓ | 97.15% | 4,241 |
+| `basic-inline-formatting` | `<strong>`, `<em>`, nested bold-italic, and explicit CSS cancellation inside inherited styles | ✓ | 97.39% | 10,886 |
+| `pre-code-block` | Fenced `<pre><code>` + inline `<code>` | ✓ | 97.16% | 4,240 |
 | `simple-table-2x2` | 2-column table, header + one row | ✓ | 96.98% | 589 |
-| `simple-table-3col` | 3-column table, 3 rows | ✓ | 97.46% | 1,039 |
-| `adjacent-tables` | Two sibling tables with nothing between them — must not merge into one | ✓ | 96.93% | 2,159 |
-| `table-colgroup-widths` | Column widths from `<colgroup>` (wide first column, short cells) + a colspan section row | ✓ | 97.59% | 2,241 |
-| `table-physical-unit-widths` | Column widths in physical units (pt/mm/cm/in) via `<colgroup>` — each header states its expected width | ✓ | 97.50% | 2,110 |
+| `simple-table-3col` | 3-column table, 3 rows | ✓ | 97.46% | 1,038 |
+| `adjacent-tables` | Two sibling tables with nothing between them — must not merge into one | ✓ | 96.94% | 2,159 |
+| `table-colgroup-widths` | Column widths from `<colgroup>` (wide first column, short cells) + a colspan section row | ✓ | 97.59% | 2,239 |
+| `table-physical-unit-widths` | Column widths in physical units (pt/mm/cm/in) via `<colgroup>` — each header states its expected width | ✓ | 97.51% | 2,107 |
 | `css-length-units` | Physical CSS length units (mm, cm, in, pc) — indents/padding at real distances | ✓ | 97.00% | 3,270 |
 | `paragraph-with-line-break` | Address block with `<br>` tags | ✓ | 96.29% | 2,105 |
 | `admonition-note` | Docs `note` admonition — box synthesized from class (browser styling via CSS) | ✓ | 97.97% | 5,182 |
@@ -47,7 +47,7 @@ Tables below use the **layout-based visual** score; misaligned px is the raw pix
 | `centered-paragraph` | `text-align: center` | ✓ | 96.81% | 748 |
 | `horizontal-rule` | Content separated by `<hr>` | ✓ | 94.64% | 2,480 |
 
-## Edge cases (27)
+## Edge cases (28)
 
 | Test | Description | XML | Visual | Misaligned px |
 |------|-------------|-----|--------|---------------|
@@ -55,19 +55,20 @@ Tables below use the **layout-based visual** score; misaligned px is the raw pix
 | `table-mismatched-cells` | Colspan, short rows, extra cells | ✓ | 97.34% | 1,347 |
 | `borderless-table` | Label/value table with `border:none` | ✓ | 96.97% | 2,290 |
 | `table-row-backgrounds` | Shaded `<tr>` bands | ✓ | 98.73% | 1,764 |
-| `table-cell-padding` | Per-cell CSS `padding` overrides the table `cellpadding` (browser-native, scorable) | ✓ | 97.14% | 1,045 |
-| `table-vertical-text` | Vertical table header columns via CSS `writing-mode` (narrow rotated labels + horizontal control) | ✓ | 82.49% | 2,265 |
-| `table-empty-cell-row-height` | Truly empty rows collapse; `&nbsp;`/zero-width rows keep a line box | ✓ | 91.58% | 17,214 |
+| `table-cell-padding` | Per-cell CSS `padding` overrides the table `cellpadding` (browser-native, scorable) | ✓ | 97.15% | 1,044 |
+| `table-vertical-text` | Vertical table header columns via CSS `writing-mode` (narrow rotated labels + horizontal control) | ✓ | 82.49% | 2,262 |
+| `table-empty-cell-row-height` | Truly empty rows collapse; `&nbsp;`/zero-width rows keep a line box | ✓ | 91.58% | 17,213 |
 | `nested-blockquotes-lists` | Nested quotes, `<ol>` inside `<ul>` | ✓ | 91.48% | 3,666 |
 | `inline-vs-block` | Spans, links, code, styled divs | ✓ | 98.35% | 3,691 |
-| `inline-backgrounds` | Multi-color inline highlights, bold in shaded span | ✓ | 97.76% | 2,989 |
-| `mixed-margins-paddings` | Asymmetric margin/padding, bordered box | ✓ | 95.68% | 5,445 |
+| `inline-backgrounds` | Multi-color inline highlights, bold in shaded span | ✓ | 97.77% | 2,988 |
+| `mixed-margins-paddings` | Asymmetric margin/padding, bordered box | ✓ | 95.68% | 5,443 |
+| `bordered-shaded-div-width-percent` | Single bordered/shaded div with `width:50%`, custom font-family, padding and margin | ✓ | 97.40% | 512 |
 | `flex-row-horizontal` | `display:flex; flex-direction:row` — three columns with gap and wrapping content | ✓ | 97.28% | 16,655 |
 | `flex-column-vertical` | `display:flex; flex-direction:column` — stacked rows with gap | ✓ | 98.19% | 12,759 |
-| `flex-row-images` | Flex row of bordered cards each wrapping an `<img>` (LibreOffice overflow repro; no rasterize) | ✓ | 96.75% | 16,827 |
+| `flex-row-images` | Flex row of bordered cards each wrapping an `<img>` (LibreOffice overflow repro; no rasterize) | ✓ | 96.75% | 16,826 |
 | `inline-svg-chart` | Inline SVG bar chart → native DOCX bands | ✓ | 97.03% | 2,907 |
 | `rasterize-in-place-chart` | Complex SVG + canvas rasterized via `rasterizeInPlace` before conversion | ✓ | 99.20% | 3,276 |
-| `table-cell-bar-divs` | CSS bar divs inside table cells | ✓ | 98.74% | 5,863 |
+| `table-cell-bar-divs` | CSS bar divs inside table cells | ✓ | 98.74% | 5,862 |
 | `unicode-emoji-content` | Emoji in body text | ✓ | 96.44% | 3,585 |
 | `image-block` | `data:` URL `<img>` in a centered paragraph | ✓ | 98.75% | 1,410 |
 | `image-figure` | `<figure>` → `<img>` + `<figcaption>` | ✓ | 99.33% | 809 |
@@ -77,7 +78,7 @@ Tables below use the **layout-based visual** score; misaligned px is the raw pix
 | `ordered-list-upper-roman` | `<ol list-style-type:upper-roman>` | ✓ | 97.12% | 1,106 |
 | `unordered-list-square` | `<ul list-style-type:square>` | ✓ | 96.89% | 1,657 |
 | `vertical-align-super-sub` | `vertical-align: super/sub` and `<sup>`/`<sub>` → OOXML superscript/subscript runs | ✓ | 97.41% | 1,435 |
-| `line-height-presets` | CSS `line-height` presets — single (1), 1.15, 1.5, and double (2) spacing | ✓ | 97.34% | 16,932 |
+| `line-height-presets` | CSS `line-height` presets — single (1), 1.15, 1.5, and double (2) spacing | ✓ | 97.34% | 16,933 |
 
 ---
 
