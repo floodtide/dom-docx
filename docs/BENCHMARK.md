@@ -20,20 +20,20 @@ All libraries use the **same visual harness**: human-validated layout fidelity p
 | Metric | html-to-docx | @turbodocx/html-to-docx | dom-docx |
 |--------|---:|---:|---:|
 | XML schema pass | 0 / 49 | 0 / 49 | **49 / 49** |
-| Avg **visual (layout-based)** | 64.27% | 65.01% | **96.59%** |
+| Avg **visual (layout-based)** | 64.73% | 65.66% | **96.59%** |
 | Avg editability | 100.00 | 100.00 | 99.39 |
-| Avg engine score | 81.63 | 82.03 | **95.00** |
-| Avg compile | 14.6 ms | 16.4 ms | 44.2 ms |
+| Avg engine score | 82.26 | 82.46 | **95.00** |
+| Avg compile | 10.9 ms | 14.5 ms | 44.2 ms |
 
 Δ vs dom-docx (library − dom-docx):
 
 | Library | Δ visual | Δ engine |
 |---------|---------:|---------:|
-| html-to-docx | **-31.76** | -13.21 |
-| @turbodocx/html-to-docx | **-31.02** | -12.81 |
+| html-to-docx | **-31.86** | -12.74 |
+| @turbodocx/html-to-docx | **-30.93** | -12.54 |
 
-**dom-docx wins 45 / 49 cases** against html-to-docx (higher layout-based visual score).
-**dom-docx wins 43 / 49 cases** against @turbodocx/html-to-docx (higher layout-based visual score).
+**dom-docx wins 46 / 49 cases** against html-to-docx (higher layout-based visual score).
+**dom-docx wins 45 / 49 cases** against @turbodocx/html-to-docx (higher layout-based visual score).
 
 ---
 
@@ -43,50 +43,51 @@ All libraries use the **same visual harness**: human-validated layout fidelity p
 |------|:---:|-------:|-------:|--:|
 | `inline-svg-chart` | ✗ | 7.21% | 97.03% | -89.83 |
 | `nested-blockquotes-lists` | ✗ | 12.11% | 91.48% | -79.37 |
-| `rasterize-in-place-chart` | ✗ | 24.50% | 99.20% | -74.70 |
+| `rasterize-in-place-chart` | ✗ | 24.49% | 99.20% | -74.71 |
 | `image-figure` | ✗ | 29.30% | 99.33% | -70.03 |
 | `table-row-backgrounds` | ✗ | 29.81% | 98.73% | -68.92 |
 | `admonition-note` | ✗ | 33.30% | 97.97% | -64.67 |
 | `typography-colors` | ✗ | 26.47% | 90.35% | -63.88 |
 | `flex-column-vertical` | ✗ | 38.65% | 98.19% | -59.54 |
+| `tooltip-skipped` | ✗ | 39.14% | 97.07% | -57.93 |
+| `borderless-table` | ✗ | 39.12% | 96.97% | -57.85 |
 | `table-cell-bar-divs` | ✗ | 43.62% | 98.74% | -55.12 |
-| `borderless-table` | ✗ | 39.12% | 91.55% | -52.43 |
-| `tooltip-skipped` | ✗ | 39.14% | 90.48% | -51.34 |
 | `table-colgroup-widths` | ✗ | 47.29% | 97.59% | -50.30 |
-| `unicode-emoji-content` | ✗ | 49.01% | 95.05% | -46.04 |
+| `unicode-emoji-content` | ✗ | 49.01% | 96.44% | -47.43 |
 | `flex-row-horizontal` | ✗ | 51.89% | 97.28% | -45.39 |
-| `table-physical-unit-widths` | ✗ | 53.02% | 97.51% | -44.49 |
-| `mixed-margins-paddings` | ✗ | 52.78% | 95.68% | -42.90 |
+| `table-physical-unit-widths` | ✗ | 53.02% | 97.50% | -44.48 |
+| `flex-row-images` | ✗ | 53.34% | 96.75% | -43.41 |
+| `mixed-margins-paddings` | ✗ | 52.79% | 95.68% | -42.89 |
 | `css-length-units` | ✗ | 55.60% | 97.00% | -41.40 |
-| `flex-row-images` | ✗ | 53.34% | 93.73% | -40.40 |
-| `adjacent-tables` | ✗ | 57.23% | 96.94% | -39.71 |
+| `adjacent-tables` | ✗ | 57.23% | 96.93% | -39.70 |
 | `inline-vs-block` | ✗ | 60.26% | 98.35% | -38.09 |
 | `table-vertical-text` | ✗ | 45.20% | 82.49% | -37.29 |
 | `table-mismatched-cells` | ✗ | 60.64% | 97.34% | -36.70 |
 | `simple-table-2x2` | ✗ | 61.99% | 96.98% | -34.99 |
-| `table-cell-padding` | ✗ | 62.83% | 97.15% | -34.32 |
+| `table-cell-padding` | ✗ | 62.83% | 97.14% | -34.31 |
 | `simple-table-3col` | ✗ | 64.10% | 97.46% | -33.36 |
 | `horizontal-rule` | ✗ | 66.12% | 94.64% | -28.52 |
 | `modal-dialog-skipped` | ✗ | 71.93% | 95.15% | -23.22 |
-| `basic-inline-formatting` | ✗ | 74.62% | 97.39% | -22.77 |
-| `pre-code-block` | ✗ | 74.85% | 97.16% | -22.31 |
+| `basic-inline-formatting` | ✗ | 74.62% | 97.38% | -22.76 |
+| `pre-code-block` | ✗ | 74.85% | 97.15% | -22.30 |
+| `heading-hierarchy` | ✗ | 75.33% | 97.20% | -21.87 |
 | `simple-unordered-list` | ✗ | 77.16% | 97.27% | -20.11 |
-| `heading-hierarchy` | ✗ | 75.33% | 91.56% | -16.23 |
-| `inline-backgrounds` | ✗ | 83.65% | 97.77% | -14.12 |
+| `inline-backgrounds` | ✗ | 83.65% | 97.76% | -14.11 |
 | `table-empty-cell-row-height` | ✗ | 78.28% | 91.58% | -13.30 |
 | `paragraph-and-list` | ✗ | 84.12% | 97.01% | -12.89 |
 | `multiple-links` | ✗ | 86.24% | 96.59% | -10.35 |
+| `line-height-presets` | ✗ | 86.99% | 97.34% | -10.35 |
 | `unordered-list-square` | ✗ | 86.71% | 96.89% | -10.18 |
 | `paragraph-with-line-break` | ✗ | 86.87% | 96.29% | -9.42 |
+| `ordered-list-rich-inline` | ✗ | 90.66% | 97.91% | -7.25 |
 | `vertical-align-super-sub` | ✗ | 90.97% | 97.41% | -6.44 |
 | `multiple-paragraphs` | ✗ | 93.43% | 97.31% | -3.88 |
 | `ordered-list-upper-roman` | ✗ | 93.44% | 97.12% | -3.68 |
 | `simple-blockquote` | ✗ | 93.88% | 97.44% | -3.56 |
-| `ordered-list-rich-inline` | ✗ | 90.66% | 93.75% | -3.09 |
 | `ordered-list-lower-alpha` | ✗ | 94.31% | 97.30% | -2.99 |
-| `simple-ordered-list` | ✗ | 95.28% | 97.24% | -1.96 |
+| `simple-ordered-list` | ✗ | 95.28% | 97.23% | -1.95 |
 | `image-block` | ✗ | 98.10% | 98.75% | -0.65 |
-| `simple-link` | ✗ | 96.60% | 96.49% | +0.11 |
+| `simple-link` | ✗ | 96.61% | 96.49% | +0.12 |
 | `plain-paragraph` | ✗ | 96.98% | 96.84% | +0.14 |
 | `centered-paragraph` | ✗ | 96.99% | 96.81% | +0.18 |
 
@@ -100,47 +101,48 @@ All libraries use the **same visual harness**: human-validated layout fidelity p
 | `image-figure` | ✗ | 30.48% | 99.33% | -68.85 |
 | `admonition-note` | ✗ | 33.62% | 97.97% | -64.35 |
 | `flex-column-vertical` | ✗ | 37.49% | 98.19% | -60.70 |
+| `tooltip-skipped` | ✗ | 38.42% | 97.07% | -58.65 |
 | `typography-colors` | ✗ | 35.86% | 90.35% | -54.49 |
 | `table-colgroup-widths` | ✗ | 44.72% | 97.59% | -52.87 |
-| `tooltip-skipped` | ✗ | 38.42% | 90.48% | -52.06 |
 | `flex-row-horizontal` | ✗ | 46.38% | 97.28% | -50.90 |
 | `modal-dialog-skipped` | ✗ | 45.51% | 95.15% | -49.64 |
-| `table-physical-unit-widths` | ✗ | 49.85% | 97.51% | -47.66 |
-| `flex-row-images` | ✗ | 50.82% | 93.73% | -42.92 |
+| `table-physical-unit-widths` | ✗ | 49.85% | 97.50% | -47.65 |
+| `borderless-table` | ✗ | 49.51% | 96.97% | -47.46 |
+| `flex-row-images` | ✗ | 50.82% | 96.75% | -45.93 |
 | `inline-vs-block` | ✗ | 55.46% | 98.35% | -42.89 |
-| `adjacent-tables` | ✗ | 54.70% | 96.94% | -42.24 |
-| `borderless-table` | ✗ | 49.51% | 91.55% | -42.04 |
-| `table-mismatched-cells` | ✗ | 57.19% | 97.34% | -40.15 |
-| `simple-table-2x2` | ✗ | 57.98% | 96.98% | -39.00 |
+| `adjacent-tables` | ✗ | 54.70% | 96.93% | -42.23 |
+| `table-mismatched-cells` | ✗ | 57.20% | 97.34% | -40.14 |
+| `simple-table-2x2` | ✗ | 57.99% | 96.98% | -38.99 |
 | `simple-table-3col` | ✗ | 59.25% | 97.46% | -38.21 |
 | `css-length-units` | ✗ | 59.15% | 97.00% | -37.85 |
 | `table-vertical-text` | ✗ | 45.01% | 82.49% | -37.48 |
-| `table-cell-padding` | ✗ | 61.61% | 97.15% | -35.54 |
-| `mixed-margins-paddings` | ✗ | 62.10% | 95.68% | -33.58 |
-| `unordered-list-square` | ✗ | 69.17% | 96.89% | -27.72 |
+| `table-cell-padding` | ✗ | 61.61% | 97.14% | -35.53 |
+| `mixed-margins-paddings` | ✗ | 62.11% | 95.68% | -33.57 |
+| `unordered-list-square` | ✗ | 69.16% | 96.89% | -27.73 |
 | `ordered-list-lower-alpha` | ✗ | 69.97% | 97.30% | -27.33 |
-| `simple-unordered-list` | ✗ | 70.02% | 97.27% | -27.25 |
+| `simple-unordered-list` | ✗ | 70.00% | 97.27% | -27.27 |
 | `ordered-list-upper-roman` | ✗ | 69.97% | 97.12% | -27.15 |
 | `table-row-backgrounds` | ✗ | 72.19% | 98.73% | -26.54 |
-| `basic-inline-formatting` | ✗ | 71.81% | 97.39% | -25.58 |
+| `basic-inline-formatting` | ✗ | 71.81% | 97.38% | -25.57 |
 | `image-block` | ✗ | 74.17% | 98.75% | -24.58 |
 | `paragraph-and-list` | ✗ | 72.59% | 97.01% | -24.42 |
 | `horizontal-rule` | ✗ | 72.33% | 94.64% | -22.31 |
-| `pre-code-block` | ✗ | 77.42% | 97.16% | -19.74 |
-| `unicode-emoji-content` | ✗ | 77.67% | 95.05% | -17.38 |
+| `pre-code-block` | ✗ | 77.42% | 97.15% | -19.73 |
+| `heading-hierarchy` | ✗ | 78.34% | 97.20% | -18.86 |
+| `unicode-emoji-content` | ✗ | 77.67% | 96.44% | -18.77 |
 | `table-empty-cell-row-height` | ✗ | 78.05% | 91.58% | -13.53 |
-| `heading-hierarchy` | ✗ | 78.34% | 91.56% | -13.22 |
 | `table-cell-bar-divs` | ✗ | 89.32% | 98.74% | -9.42 |
-| `simple-ordered-list` | ✗ | 93.28% | 97.24% | -3.96 |
+| `simple-ordered-list` | ✗ | 93.28% | 97.23% | -3.95 |
+| `ordered-list-rich-inline` | ✗ | 93.97% | 97.91% | -3.94 |
 | `simple-blockquote` | ✗ | 93.82% | 97.44% | -3.62 |
-| `inline-backgrounds` | ✗ | 96.67% | 97.77% | -1.10 |
+| `inline-backgrounds` | ✗ | 96.67% | 97.76% | -1.09 |
 | `vertical-align-super-sub` | ✗ | 96.67% | 97.41% | -0.74 |
+| `line-height-presets` | ✗ | 96.72% | 97.34% | -0.62 |
 | `multiple-paragraphs` | ✗ | 96.87% | 97.31% | -0.44 |
 | `multiple-links` | ✗ | 96.50% | 96.59% | -0.09 |
-| `simple-link` | ✗ | 96.60% | 96.49% | +0.11 |
+| `simple-link` | ✗ | 96.61% | 96.49% | +0.12 |
 | `plain-paragraph` | ✗ | 96.98% | 96.84% | +0.14 |
 | `centered-paragraph` | ✗ | 96.99% | 96.81% | +0.18 |
-| `ordered-list-rich-inline` | ✗ | 93.97% | 93.75% | +0.22 |
 | `paragraph-with-line-break` | ✗ | 96.73% | 96.29% | +0.44 |
 
 ### List comparison (layout-based visual)
@@ -149,7 +151,7 @@ All libraries use the **same visual harness**: human-validated layout fidelity p
 |---------|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | dom-docx | **97.27%** | **97.23%** | **97.91%** | **97.01%** | **91.48%** | **96.44%** | **97.30%** | **97.12%** | **96.89%** |
 | html-to-docx | 77.16% | 95.28% | 90.66% | 84.12% | 12.11% | 49.01% | 94.31% | 93.44% | 86.71% |
-| @turbodocx/html-to-docx | 70.02% | 93.28% | 93.97% | 72.59% | 11.51% | 77.67% | 69.97% | 69.97% | 69.17% |
+| @turbodocx/html-to-docx | 70.00% | 93.28% | 93.97% | 72.59% | 11.51% | 77.67% | 69.97% | 69.97% | 69.16% |
 
 ---
 
