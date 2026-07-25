@@ -225,10 +225,10 @@ Add Related Projects section to README.
 - Committed [examples/](./examples/) with sample HTML, DOCX, and side-by-side previews
 - Visual regression harness in `tools/` (33-case loop, OSS benchmark, scoring methodology)
 
-[0.1.6]: https://github.com/dom-docx/dom-docx/releases/tag/v0.1.6
-[0.1.5]: https://github.com/dom-docx/dom-docx/releases/tag/v0.1.5
-[0.1.4]: https://github.com/dom-docx/dom-docx/releases/tag/v0.1.4
-[0.1.3]: https://github.com/dom-docx/dom-docx/releases/tag/v0.1.3
-[0.1.2]: https://github.com/dom-docx/dom-docx/releases/tag/v0.1.2
-[0.1.1]: https://github.com/dom-docx/dom-docx/releases/tag/v0.1.1
-[0.1.0]: https://github.com/dom-docx/dom-docx/releases/tag/v0.1.0
+[0.1.6]: https://github.com/floodtide/dom-docx/releases/tag/v0.1.6
+[0.1.5]: https://github.com/floodtide/dom-docx/releases/tag/v0.1.5
+[0.1.4]: https://github.com/floodtide/dom-docx/releases/tag/v0.1.4
+[0.1.3]: https://github.com/floodtide/dom-docx/releases/tag/v0.1.3
+[0.1.2]: https://github.com/floodtide/dom-docx/releases/tag/v0.1.2
+[0.1.1]: https://github.com/floodtide/dom-docx/releases/tag/v0.1.1
+[0.1.0]: https://github.com/floodtide/dom-docx/releases/tag/v0.1.0
