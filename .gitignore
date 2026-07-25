@@ -8,3 +8,5 @@ output/**/*
 playwright-report/
 test-results/
 .DS_Store
+# LibreOffice lock files (created when a .docx/.odt is open, e.g. during the visual harness)
+.~lock.*#
