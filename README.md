@@ -1,6 +1,6 @@
 # dom-docx
 
-Convert semantic **HTML fragments** to native, editable **Word documents** (OOXML): paragraphs, runs, lists, tables, images. Not screenshots or layout hacks.
+Convert semantic **HTML** to native, editable **docx files** (OOXML): paragraphs, runs, lists, tables, flex and images are all supported.
 
 **Live demo:** [dom-docx.com](https://dom-docx.com/). Try the converter, browse showcases, read the learn guide.
 
@@ -170,7 +170,7 @@ const docx = await convertHtmlToDocx(html, {
 | `defaultFont`               | Arial 10.5pt   | `{ family, sizePt }` for body text without explicit CSS.                                                                                                                                                                                                                                                                 |
 | `metadata`                  | —              | `title`, `subject`, `creator`, `keywords[]`, `description` → `docProps/core.xml`.                                                                                                                                                                                                                                        |
 | `headerHtml` / `footerHtml` | —              | HTML fragments for page header/footer.                                                                                                                                                                                                                                                                                   |
-| `pageNumber`                | `false`        | Appends page-number paragraph to footer (`true` → `Page {page}`; string templates support `{page}` / `{pages}`). |
+| `pageNumber`                | `false`        | Appends page-number paragraph to footer (`true` → `Page {page}`; string templates support `{page}` / `{pages}`).                                                                                                                                                                                                         |
 | `lang` / `direction`        | —              | Spell-check locale; `"rtl"` for right-to-left.                                                                                                                                                                                                                                                                           |
 | `coverHtml`                 | —              | HTML fragment rendered as a cover page — the first content, before the TOC, followed by an automatic page break. Inline styles + `data:` images (e.g. a logo). Header/footer/page number are suppressed on the cover page.                                                                                               |
 | `tocHtml`                   | —              | HTML fragment rendered as a table-of-contents "slot" — placed after the cover, before the body. **You** control the markup/styling (numbered, boxed, columns…); in-page links (`<a href="#id">`) jump to the matching `id` in the body. Add a trailing `<div style="break-after:page"></div>` to put it on its own page. |
