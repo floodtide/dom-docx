@@ -271,7 +271,9 @@ function marginSpacer(
           line: MARGIN_SPACER_LINE_TWIPS,
           lineRule: LineRuleType.EXACT,
         },
-    children: [emptyRun()],
+    // Keep non-bar spacers as truly empty paragraphs so desktop Word does
+    // not render an unselectable white overlay block below tables.
+    children: hasBar ? [emptyRun()] : [],
   });
 }
 

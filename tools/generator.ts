@@ -530,6 +530,11 @@ const EDGE_TEST_CASES: TestCase[] = [
     `,
   },
   {
+    name: "bordered-shaded-div-width-percent",
+    description: "Single bordered/shaded div with `width:50%`, custom font-family, padding and margin",
+    html: `<div style="border: 1px solid #c8ccd0; background: #f1f3f5; padding: 5px 8px; margin-bottom: 6px; font-size: 10.5pt; font-family: Noto Sans, sans-serif; color: #111; width:50%">div styling test</div>`,
+  },
+  {
     name: "flex-row-horizontal",
     description: "`display:flex; flex-direction:row` — three columns with gap and wrapping content",
     html: `

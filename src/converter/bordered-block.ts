@@ -22,6 +22,22 @@ function countBorderSides(borders?: BlockBorders): number {
 
 const BORDERLESS = { style: BorderStyle.NONE, size: 0, color: "auto" };
 
+function resolveTableWidth(layout: BlockLayout): number {
+  // A shaded/bordered block becomes a top-level wrapper table, so its CSS `width`
+  // resolves against the page's printable content width — there is no intermediate
+  // containing block in the flattened document flow to be a percentage basis.
+  const fromPercent =
+    layout.widthPercent !== undefined
+      ? Math.round((PRINTABLE_CONTENT_WIDTH_TWIPS * layout.widthPercent) / 100)
+      : undefined;
+  const requested = fromPercent ?? layout.widthTwips ?? PRINTABLE_CONTENT_WIDTH_TWIPS;
+  const clampedByMax =
+    layout.maxWidthTwips !== undefined ? Math.min(requested, layout.maxWidthTwips) : requested;
+  // Never exceed the printable width: a table wider than the page reflows badly in
+  // Word/LibreOffice. Floor at 1 twip so the table stays structurally valid.
+  return Math.max(1, Math.min(PRINTABLE_CONTENT_WIDTH_TWIPS, clampedByMax));
+}
+
 function borderlessTableBorders() {
   return {
     top: BORDERLESS,
@@ -39,7 +55,9 @@ function toCellBorder(side: BlockBorders["top"]) {
     style: BorderStyle.SINGLE,
     size: side.size,
     color: side.color,
-    space: side.space,
+    // Word desktop can render non-zero table-cell border spacing with
+    // visible segment offsets; keep borders flush with the cell edge.
+    space: 0,
   };
 }
 
@@ -76,7 +94,23 @@ function makeTableCellInnerParagraph(
   layout: BlockLayout,
   typography?: RunTypography,
 ): Paragraph {
+  const paragraphProps = {
+    children:
+      runs.length > 0
+        ? runs
+        : [
+            new TextRun({
+              text: "",
+              ...(typography ? typographyToTextRunOptions(typography) : {}),
+            }),
+          ],
+  };
+
   return new Paragraph({
+    ...paragraphProps,
+    // The wrapper table spans the full resolved width, so a block's horizontal
+    // margins can't narrow it. Carry them as paragraph indent instead, insetting
+    // the cell's content the way the box's margin insets it in the browser.
     ...(layout.indentLeft || layout.indentRight
       ? { indent: { left: layout.indentLeft, right: layout.indentRight } }
       : {}),
@@ -87,15 +121,6 @@ function makeTableCellInnerParagraph(
       lineRule: LineRuleType.EXACT,
     },
     contextualSpacing: false,
-    children:
-      runs.length > 0
-        ? runs
-        : [
-            new TextRun({
-              text: "",
-              ...(typography ? typographyToTextRunOptions(typography) : {}),
-            }),
-          ],
   });
 }
 
@@ -122,10 +147,6 @@ export function makeShadedBlockTable(
       ...layout,
       shading: undefined,
       borders: undefined,
-      paddingTop: 0,
-      paddingBottom: 0,
-      paddingLeft: 0,
-      paddingRight: 0,
     },
     typography,
   );
@@ -138,19 +159,20 @@ export function makeShadedContainerTable(
   layout: BlockLayout,
   borders?: BlockBorders,
 ): Table {
+  const tableWidthTwips = resolveTableWidth(layout);
   const cellChildren =
     blocks.length > 0 ? blocks : [new Paragraph({ children: [new TextRun("")] })];
 
   return new Table({
-    width: { size: PRINTABLE_CONTENT_WIDTH_TWIPS, type: WidthType.DXA },
-    columnWidths: [PRINTABLE_CONTENT_WIDTH_TWIPS],
+    width: { size: tableWidthTwips, type: WidthType.DXA },
+    columnWidths: [tableWidthTwips],
     layout: "fixed",
     borders: borderlessTableBorders(),
     rows: [
       new TableRow({
         children: [
           new TableCell({
-            width: { size: PRINTABLE_CONTENT_WIDTH_TWIPS, type: WidthType.DXA },
+            width: { size: tableWidthTwips, type: WidthType.DXA },
             borders: visibleCellBorders(borders),
             shading: layout.shading ? { type: ShadingType.CLEAR, ...layout.shading } : undefined,
             margins: {
