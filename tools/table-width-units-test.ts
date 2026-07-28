@@ -72,6 +72,24 @@ async function main(): Promise<void> {
     ))[0] === 4680,
   );
 
+  // Cell-level `style="width:…px"` with no <colgroup>. Reported against html-to-docx
+  // (privateOmega/html-to-docx#266) as being ignored or evenly distributed; the ratio
+  // between columns has to survive, not just the absolute values.
+  console.log("\ncell style widths, no colgroup:");
+  const cellPx = await gridColWidths(
+    `<table>
+      <tr><th style="width:210px">Header</th><td style="width:390px">Body content</td></tr>
+      <tr><th style="width:210px">Second</th><td style="width:390px">More body content</td></tr>
+    </table>`,
+  );
+  check("th style width:210px → 3150 twips", cellPx[0] === 3150, `got ${cellPx[0]}`);
+  check("td style width:390px → 5850 twips", cellPx[1] === 5850, `got ${cellPx[1]}`);
+  check(
+    "210:390 ratio preserved (35/65, not evenly distributed)",
+    cellPx.length === 2 && Math.abs(cellPx[0]! / (cellPx[0]! + cellPx[1]!) - 0.35) < 0.005,
+    `got ${cellPx.map((c) => c).join("/")}`,
+  );
+
   const ok = failures === 0;
   await writeGuardResult({
     id: "table-width-units",

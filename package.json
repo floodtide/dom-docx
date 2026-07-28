@@ -35,6 +35,7 @@
   "files": [
     "dist",
     "README.md",
+    "AGENTS.md",
     "LICENSE",
     "API.md",
     "examples"
@@ -83,6 +84,7 @@
     "guard:internal-href": "tsx tools/internal-href-test.ts",
     "guard:document-canvas": "tsx tools/document-canvas-test.ts",
     "guard:image-spacing": "tsx tools/image-spacing-test.ts",
+    "guard:chrome-image": "tsx tools/chrome-image-test.ts",
     "guard:table-width-units": "tsx tools/table-width-units-test.ts",
     "guard:vertical-text": "tsx tools/vertical-text-test.ts",
     "guard:fields": "tsx tools/fields-test.ts",

@@ -284,7 +284,7 @@ Prerequisites for the harness: **LibreOffice** (`soffice`) for PDF rasterization
 | Doc                                     | Contents                                                |
 | --------------------------------------- | ------------------------------------------------------- |
 | [API.md](./API.md)                      | Full API reference, engine architecture, usage patterns |
-| [AGENTS.md](./AGENTS.md)                | HTML authoring guide for AI agents                      |
+| [AGENTS.md](./AGENTS.md)                | For AI agents: HTML that converts well, what to avoid, plus copyable document shapes |
 | [SCORING.md](./docs/SCORING.md)         | Validation methodology and engine score                 |
 | [TEST-SCORES.md](./docs/TEST-SCORES.md) | Latest suite metrics and per-case scores                |
 | [BENCHMARK.md](./docs/BENCHMARK.md)     | Comparison vs OSS html-to-docx libraries                |

@@ -22,6 +22,7 @@ const GUARDS = [
   "guard:internal-href",
   "guard:document-canvas",
   "guard:image-spacing",
+  "guard:chrome-image",
   "guard:pack-smoke",
 ];
 
