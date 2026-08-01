@@ -238,6 +238,8 @@ Optimized for **Word-friendly semantic HTML**: headings, paragraphs, lists, data
 
 Full authoring guide for agents: [AGENTS.md](./AGENTS.md).
 
+If a document renders wrong, please open an issue with the HTML that caused it and a quick investigation will ensue.
+
 ---
 
 ## How it was built
@@ -281,16 +283,16 @@ Prerequisites for the harness: **LibreOffice** (`soffice`) for PDF rasterization
 
 ## Documentation
 
-| Doc                                     | Contents                                                |
-| --------------------------------------- | ------------------------------------------------------- |
-| [API.md](./API.md)                      | Full API reference, engine architecture, usage patterns |
+| Doc                                     | Contents                                                                             |
+| --------------------------------------- | ------------------------------------------------------------------------------------ |
+| [API.md](./API.md)                      | Full API reference, engine architecture, usage patterns                              |
 | [AGENTS.md](./AGENTS.md)                | For AI agents: HTML that converts well, what to avoid, plus copyable document shapes |
-| [SCORING.md](./docs/SCORING.md)         | Validation methodology and engine score                 |
-| [TEST-SCORES.md](./docs/TEST-SCORES.md) | Latest suite metrics and per-case scores                |
-| [BENCHMARK.md](./docs/BENCHMARK.md)     | Comparison vs OSS html-to-docx libraries                |
-| [examples/](./examples/)                | Sample HTML, DOCX output and side-by-side previews      |
-| [SHOWCASE.md](./docs/SHOWCASE.md)       | How to run and extend showcase examples                 |
-| [CONTRIBUTING.md](./CONTRIBUTING.md)    | Library vs harness layout, dev setup                    |
+| [SCORING.md](./docs/SCORING.md)         | Validation methodology and engine score                                              |
+| [TEST-SCORES.md](./docs/TEST-SCORES.md) | Latest suite metrics and per-case scores                                             |
+| [BENCHMARK.md](./docs/BENCHMARK.md)     | Comparison vs OSS html-to-docx libraries                                             |
+| [examples/](./examples/)                | Sample HTML, DOCX output and side-by-side previews                                   |
+| [SHOWCASE.md](./docs/SHOWCASE.md)       | How to run and extend showcase examples                                              |
+| [CONTRIBUTING.md](./CONTRIBUTING.md)    | Library vs harness layout, dev setup                                                 |
 
 ## Related projects
 
