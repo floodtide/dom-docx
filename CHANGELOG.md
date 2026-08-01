@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 0.1.22
+
+No converter changes. Packaging, discoverability and test coverage only.
+
+### Added
+
+- **`AGENTS.md` now ships in the published package.** The HTML authoring guide for AI agents was previously repo-only, so anything reading `node_modules/dom-docx` could not find it. Covers which constructs convert well, which to avoid, and copyable document shapes.
+
+- **Header and footer image guard.** `npm run guard:chrome-image` asserts that `data:` images passed via `headerHtml` / `footerHtml` reach the generated `word/header*.xml` / `word/footer*.xml` as real drawings with their bytes in `word/media/`, and that an image used in both is stored once rather than twice. Added to `guard:ci`.
+
+- **Cell-level width coverage in `guard:table-width-units`.** Now covers `style="width:…px"` on `<th>` / `<td>` with no `<colgroup>`, asserting both the absolute twips and that the ratio between columns survives instead of being evenly distributed. Prompted by privateOmega/html-to-docx#266, where both behaviours are reported broken.
+
+### Changed
+
+- **npm keywords now include `html-to-docx` and `html to docx`.** Exact-phrase keywords place the package in the narrow keyword pool people actually search, alongside the established libraries, rather than only the generic `html` and `docx` pools.
+
 ## 0.1.21
 
 ### Fixed
