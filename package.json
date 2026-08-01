@@ -1,6 +1,6 @@
 {
   "name": "dom-docx",
-  "version": "0.1.21",
+  "version": "0.1.22",
   "description": "Convert semantic HTML to native, editable docx files (OOXML)",
   "license": "MIT",
   "author": "Blair Googer",
