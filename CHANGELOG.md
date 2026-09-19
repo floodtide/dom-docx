@@ -6,7 +6,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
-### Fixed
+### 1.0.3
 
 - **A `<td>`/`<col>` with `border-width`, `min-width`, or `max-width` (but no `width`) could have its column sized from that unrelated property.** `explicitCellWidthTwips`/`colWidthTwips`'s raw-style regex fallback (used when the `width` CSS property parser found nothing) matched the substring `"width:"` wherever it occurred, including inside `border-width:`/`min-width:`/`max-width:` — pinning the column to that value's magnitude instead of sizing from content. The regex now requires `width` to start a declaration (`(?:^|;)\s*width\s*:`).
 - **An explicitly zeroed border side (e.g. `border-right-width: 0`) was repainted by the generic `border` shorthand's fallback.** `buildBlockBorders` (divs/blockquotes), `tableBorderPlan` (table frames), and `cellStyleBorders` (table cells) all resolved a side as `css.borderX ?? css.border` — since a zeroed side resolves to the same `undefined` a never-declared one would, all three fell back to painting it with the generic border anyway. `ParsedCss` now tracks which sides got their own explicit declaration (`explicitBorderSides`), and a shared `resolveBorderSide` helper (used by all three call sites) only falls back to `border` for sides with no declaration of their own.
