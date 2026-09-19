@@ -6,14 +6,14 @@ To generate suite metrics, run `npm run score:suite` then `npm run docs:sync`. *
 
 ## Summary
 
-| Metric | Standard (22) | Edge (30) | All (52) |
+| Metric | Standard (22) | Edge (36) | All (58) |
 |--------|---------------|-----------|----------|
-| XML schema pass | 22 / 22 | 30 / 30 | **52 / 52** |
-| Avg **visual (layout-based)** | 97.05% | 96.36% | **96.65%** |
-| Avg raw layout (pre-guards) | 97.05% | 96.44% | **96.70%** |
-| Avg pixel match (tripwire, unscored) | 89.69% | 93.48% | **91.88%** |
-| Avg engine score | 94.89 | 95.03 | **94.97** |
-| Avg compile | — | — | **43.4 ms** |
+| XML schema pass | 22 / 22 | 36 / 36 | **58 / 58** |
+| Avg **visual (layout-based)** | 97.05% | 96.50% | **96.71%** |
+| Avg raw layout (pre-guards) | 97.05% | 96.57% | **96.75%** |
+| Avg pixel match (tripwire, unscored) | 89.69% | 93.48% | **92.04%** |
+| Avg engine score | 94.89 | 94.89 | **94.89** |
+| Avg compile | — | — | **41.4 ms** |
 | Identity-pair calibration (full 10) | — | — | **mean 97.21% / min 96.42%** |
 
 Tables below use the **layout-based visual** score; misaligned px is the raw pixel tripwire.
@@ -47,7 +47,7 @@ Tables below use the **layout-based visual** score; misaligned px is the raw pix
 | `centered-paragraph` | `text-align: center` | ✓ | 96.81% | 748 |
 | `horizontal-rule` | Content separated by `<hr>` | ✓ | 94.64% | 2,480 |
 
-## Edge cases (30)
+## Edge cases (36)
 
 | Test | Description | XML | Visual | Misaligned px |
 |------|-------------|-----|--------|---------------|
@@ -81,6 +81,12 @@ Tables below use the **layout-based visual** score; misaligned px is the raw pix
 | `unordered-list-square` | `<ul list-style-type:square>` | ✓ | 96.89% | 1,657 |
 | `vertical-align-super-sub` | `vertical-align: super/sub` and `<sup>`/`<sub>` → OOXML superscript/subscript runs | ✓ | 97.41% | 1,435 |
 | `line-height-presets` | CSS `line-height` presets — single (1), 1.15, 1.5, and double (2) spacing | ✓ | 97.34% | 16,933 |
+| `table-cell-width-vs-border-width` | A `<td>` with `border-width` but no `width` property must not have its column sized from the border value | ✓ | 97.26% | 2,716 |
+| `table-cell-explicit-zero-border-side` | A `<td>` with `border` on three sides and `border-right-width: 0` must not draw a right border | ✓ | 96.23% | 1,893 |
+| `table-frame-explicit-zero-border-side` | A `<table>` with `border` on three sides and `border-right-width: 0` must not draw a right frame border | ✓ | 98.31% | 1,972 |
+| `div-explicit-zero-border-side` | A `<div>` with `border` on three sides and `border-right-width: 0` must not draw a right border | ✓ | 98.35% | 2,126 |
+| `border-shorthand-unitless-zero` | `border: 0` / `border-right: 0` (no unit) must mean no border, not a visible 1px border | ✓ | 96.50% | 3,001 |
+| `border-shorthand-non-px-unit-zero` | `border: 0pt` / `border-right: 0in` (zero in a non-px unit) must mean no border, not a visible 1px border | ✓ | 96.49% | 2,787 |
 
 ---
 
@@ -97,7 +103,7 @@ Bottom 8 cases by layout-based visual score — human rating (1 = looks right, 2
 | `horizontal-rule` | 94.64% | 1 | Minor vertical height issues |
 | `modal-dialog-skipped` | 95.15% | 1 | Figure with a click-to-expand `<dialog>` holding a duplicate image — modal is skipped |
 | `mixed-margins-paddings` | 95.68% | 2 | Not bad but the Nested margin box is lower than the source html |
-| `paragraph-with-line-break` | 96.29% | 2 | Lines 2 and 3 are indented in docx, html is all left aligned |
+| `table-cell-explicit-zero-border-side` | 96.23% | — | A `<td>` with `border` on three sides and `border-right-width: 0` must not draw a right border |
 
 ---
 
