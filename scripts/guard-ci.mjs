@@ -17,6 +17,7 @@ const GUARDS = [
   "guard:inline",
   "guard:config",
   "guard:fields",
+  "guard:list-numbering",
   "guard:mixed-orientation",
   "guard:toc-slot",
   "guard:internal-href",

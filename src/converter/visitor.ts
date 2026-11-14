@@ -1011,6 +1011,26 @@ function resolveListReference(
   return tag === "ol" ? "numbers" : "bullets";
 }
 
+/**
+ * Next `docx` numbering instance for an ordered list. Reset once per document
+ * build. Without this, every ordered list omits `instance` and `docx` maps them
+ * all to instance 0 — one `w:num`, so a later `<ol>` continues 3, 4, …
+ * Bullets stay on instance 0; they have no counter.
+ */
+let nextOrderedListInstance = 0;
+
+export function resetOrderedListInstances(): void {
+  nextOrderedListInstance = 0;
+}
+
+function takeOrderedListInstance(): number {
+  return nextOrderedListInstance++;
+}
+
+function isOrderedListReference(listRef: string): boolean {
+  return listRef.startsWith("numbers");
+}
+
 /** Exported for table cells — lists inside `<td>` use the same numbering path. */
 export function processList(
   $: CheerioAPI,
@@ -1019,6 +1039,9 @@ export function processList(
 ): DocxBlock[] {
   const tag = listElement.name.toLowerCase();
   const listRef = resolveListReference(listElement, tag, ctx.styleResolver);
+  // Allocate even for a nested `<ol>`. A nested list is its own counter in HTML,
+  // and sharing the parent's instance makes a second nested `<ol>` continue.
+  const listInstance = isOrderedListReference(listRef) ? takeOrderedListInstance() : undefined;
   const blocks: DocxBlock[] = [];
   const { marginTop, marginBottom } = listContainerMargins(listElement, ctx.styleResolver);
   const topSpacer = marginSpacer(
@@ -1030,7 +1053,9 @@ export function processList(
   $(listElement)
     .children("li")
     .each((_, li) => {
-      blocks.push(...processListItem($, li, { ...ctx, listRef, listLevel: ctx.listLevel }));
+      blocks.push(
+        ...processListItem($, li, { ...ctx, listRef, listLevel: ctx.listLevel, listInstance }),
+      );
     });
 
   const bottomSpacer = marginSpacer(marginBottom);
@@ -1042,8 +1067,12 @@ function listItemParagraphExtra(
   ctx: VisitorContext,
 ): Record<string, unknown> {
   return {
-    style: ctx.listRef?.startsWith("numbers") ? "ListNumber" : "ListBullet",
-    numbering: { reference: ctx.listRef ?? "bullets", level: ctx.listLevel },
+    style: ctx.listRef && isOrderedListReference(ctx.listRef) ? "ListNumber" : "ListBullet",
+    numbering: {
+      reference: ctx.listRef ?? "bullets",
+      level: ctx.listLevel,
+      ...(ctx.listInstance !== undefined ? { instance: ctx.listInstance } : {}),
+    },
   };
 }
 

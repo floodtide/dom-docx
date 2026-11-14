@@ -23,7 +23,7 @@ import {
   type BodySection,
   type PageOrientationName,
 } from "./page-orientation.js";
-import { htmlToDocxBlocks } from "./visitor.js";
+import { htmlToDocxBlocks, resetOrderedListInstances } from "./visitor.js";
 
 /**
  * Diagnostic callback for conditions that don't fail the conversion but silently
@@ -369,6 +369,7 @@ export async function buildDocxUint8Array(
   onWarning?: WarningHandler | null,
 ): Promise<Uint8Array> {
   resetImageDocPrIds();
+  resetOrderedListInstances();
   const allowClassPageMapping = styleResolver.source === "computed";
   const pageRules = parseCssPageRules(html, allowClassPageMapping);
   const inferredOrientation = documentConfig?.orientation ? undefined : pageRules.defaultOrientation;

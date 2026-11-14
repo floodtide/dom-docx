@@ -6,6 +6,10 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+### Fixed
+
+- **Separate ordered lists shared one Word numbering instance and did not restart at 1.** Every `<ol>` (and any list using an ordered `list-style-type`) omitted `numbering.instance`, so `docx` mapped them all to instance 0 — one `w:num`. A later list continued `3.`, `4.` in Word and LibreOffice. Each ordered list now gets its own instance, including nested lists, lists in table cells, and lists split across sections or page chrome. Bullets still share an instance.
+
 ### 1.0.3
 
 - **A `<td>`/`<col>` with `border-width`, `min-width`, or `max-width` (but no `width`) could have its column sized from that unrelated property.** `explicitCellWidthTwips`/`colWidthTwips`'s raw-style regex fallback (used when the `width` CSS property parser found nothing) matched the substring `"width:"` wherever it occurred, including inside `border-width:`/`min-width:`/`max-width:` — pinning the column to that value's magnitude instead of sizing from content. The regex now requires `width` to start a declaration (`(?:^|;)\s*width\s*:`).

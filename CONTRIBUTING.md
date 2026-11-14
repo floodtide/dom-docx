@@ -93,11 +93,12 @@ npm run score:calibration -- --full
 
 ### 3. Guards — binary pass/fail invariants
 
-Each writes a result to `output/guards/<id>.json` (via `tools/guard-result.ts`, or an inlined equivalent in `scripts/pack-smoke.mjs` since it runs via plain `node`); `docs:sync` reads whichever are present into a single status table in BENCHMARK.md. `guard:inline`, `guard:config`, `guard:fields`, `guard:mixed-orientation`, `guard:toc-slot`, `guard:internal-href`, `guard:bookmark-length`, `guard:border-width`, `guard:document-canvas`, `guard:image-spacing`, and `guard:pack-smoke` need no Playwright/LibreOffice and run in CI (`guard:document-canvas` and `guard:mixed-orientation` also run optional Playwright/LibreOffice sections when available); the remaining ones need Playwright/LibreOffice and are maintainer-only.
+Each writes a result to `output/guards/<id>.json` (via `tools/guard-result.ts`, or an inlined equivalent in `scripts/pack-smoke.mjs` since it runs via plain `node`); `docs:sync` reads whichever are present into a single status table in BENCHMARK.md. `guard:inline`, `guard:config`, `guard:fields`, `guard:list-numbering`, `guard:mixed-orientation`, `guard:toc-slot`, `guard:internal-href`, `guard:bookmark-length`, `guard:border-width`, `guard:document-canvas`, `guard:image-spacing`, and `guard:pack-smoke` need no Playwright/LibreOffice and run in CI (`guard:document-canvas` and `guard:mixed-orientation` also run optional Playwright/LibreOffice sections when available); the remaining ones need Playwright/LibreOffice and are maintainer-only.
 
 - **`guard:inline`** — converts every case via default options and via explicit `{ styleSource: "inline" }`; asserts byte-identical normalized `word/*.xml`. Catches accidental drift in the default path.
 - **`guard:config`** — a battery of named assertions (one per `DocumentConfig` field — `pageSize`, `margins`, `defaultFont`, `metadata`, `headerHtml`/`footerHtml`, `pageNumber`, `lang`/`direction`, `coverHtml`, `tocHtml`, …) that each produces the correct OOXML. **Runs every assertion through both public entries** — the Node `convertHtmlToDocx` and the browser `convertHtmlToDocxUint8Array` (its inline path runs headless) — because option forwarding is duplicated per entry and has drifted before (a new option reaching one entry but not the other, with no compiler error).
 - **`guard:fields`** — allowlisted Word fields in page chrome (`data-docx-field`, `{page}`/`{pages}` sugar, `pageNumber` templates). Asserts complex-field OOXML, FldS character styles for LibreOffice, denied-name warnings, and body scope. Writes a sample DOCX to `output/guards/fields/output.docx` for manual inspection. CI — no Playwright/LibreOffice.
+- **`guard:list-numbering`** — each ordered list gets its own `w:num` so numbering restarts at 1 (sibling `<ol>`, nested lists, table cells, sections, `tocHtml` / `headerHtml`). Bullets keep a shared instance. CI — no Playwright/LibreOffice.
 - **`guard:mixed-orientation`** — per-section portrait/landscape from CSS `page` / `@page size` (inline path) and class→page mapping under `styleSource: "computed"`. Structural `w:pgSz` checks plus optional LibreOffice PDF render. CI — core checks need no Playwright/LibreOffice.
 - **`guard:pack-smoke`** — `npm pack`s the real tarball, installs it into a clean temp project, and asserts: Playwright isn't a hard/optional dependency, the browser bundle files ship in the tarball, and the library/CLI/browser entry points each actually convert HTML to a valid `.docx`.
 - **`guard:computed-parity`** — computed-oracle and computed-native must emit byte-identical OOXML for identical HTML. This is what backs the claim that the "native" lane (a Playwright-driven stand-in used in the test harness) faithfully represents the real browser deployment.
@@ -116,6 +117,7 @@ npm run guard:ci                 # all CI-safe guards below, in one run (what CI
 npm run guard:inline             # CI
 npm run guard:config             # CI
 npm run guard:fields             # CI (sample DOCX → output/guards/fields/)
+npm run guard:list-numbering     # CI
 npm run guard:mixed-orientation  # CI (structural w:pgSz; optional LO PDF)
 npm run guard:toc-slot           # CI
 npm run guard:internal-href      # CI
@@ -129,7 +131,7 @@ npm run guard:computed-parity    # maintainer-only, needs Playwright
 npm run guard:browser-parity     # maintainer-only, needs Playwright + a built bundle
 ```
 
-`guard:ci` (`scripts/guard-ci.mjs`) is a thin wrapper that runs the nine CI-safe guards; the CI-safe list lives only in that file's `GUARDS` array. Unlike a fail-fast `&&` chain it runs every guard even after one fails and prints a summary, so a broken build surfaces all failures at once. The individual `guard:*` scripts stay runnable on their own for local iteration.
+`guard:ci` (`scripts/guard-ci.mjs`) is a thin wrapper that runs the CI-safe guards; the CI-safe list lives only in that file's `GUARDS` array. Unlike a fail-fast `&&` chain it runs every guard even after one fails and prints a summary, so a broken build surfaces all failures at once. The individual `guard:*` scripts stay runnable on their own for local iteration.
 
 ### 4. Research tools — validate the metric itself, not the converter
 
@@ -167,7 +169,7 @@ Scoring methodology: [docs/SCORING.md](./docs/SCORING.md). HTML authoring guide:
 
 ## Release to npm
 
-CI (`.github/workflows/ci.yml`) runs on every push/PR: typecheck, build, browser bundle, and `guard:ci` (the nine CI-safe guards) — no Playwright or LibreOffice.
+CI (`.github/workflows/ci.yml`) runs on every push/PR: typecheck, build, browser bundle, and `guard:ci` (the CI-safe guards) — no Playwright or LibreOffice.
 
 Before a release commit or tag, run the full local gauntlet:
 

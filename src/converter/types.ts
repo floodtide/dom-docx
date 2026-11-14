@@ -87,6 +87,12 @@ export interface VisitorContext {
   blockquoteDepth: number;
   /** Numbering reference (see LIST_STYLE_REFERENCES); ordered refs start with "numbers". */
   listRef?: string;
+  /**
+   * Concrete numbering instance for this ordered list (`docx` `numbering.instance`).
+   * Each `<ol>` (and any list whose reference is an ordered format) gets its own
+   * instance so Word restarts at 1. Unset for bullets, which share instance 0.
+   */
+  listInstance?: number;
   listLevel: number;
   inheritedLayout?: BlockLayout;
   styleResolver: StyleResolver;
