@@ -8,7 +8,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Fixed
 
-- **Separate ordered lists shared one Word numbering instance and did not restart at 1.** Every `<ol>` (and any list using an ordered `list-style-type`) omitted `numbering.instance`, so `docx` mapped them all to instance 0 — one `w:num`. A later list continued `3.`, `4.` in Word and LibreOffice. Each ordered list now gets its own instance, including nested lists, lists in table cells, and lists split across sections or page chrome. Bullets still share an instance.
+- **Separate ordered lists shared one Word numbering instance and did not restart at 1.** Every `<ol>` (and any list using an ordered `list-style-type`) omitted `numbering.instance`, so `docx` mapped them all to instance 0 — one `w:num`. A later list continued `3.`, `4.` in Word and LibreOffice. Each ordered list now gets its own instance, including nested lists, lists in table cells, and lists split across sections or page chrome. Bullets still share an instance. Reported in [#13](https://github.com/floodtide/dom-docx/issues/13). Credit: [UCSB PLSE](https://ucsbplse.github.io/).
 
 ### 1.0.3
 
