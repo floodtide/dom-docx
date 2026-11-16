@@ -161,6 +161,17 @@ async function main(): Promise<void> {
     JSON.stringify(plain),
   );
 
+  console.log("\ntop-level text is kept:");
+  const looseText = (await documentXml(`Hello <b>world</b><p>para</p>More text`))
+    .match(/<w:t[^>]*>[^<]*<\/w:t>/g)
+    ?.map((t) => t.replace(/<[^>]+>/g, ""))
+    .join("|");
+  check(
+    "text outside any tag reaches the document",
+    looseText === "Hello |world|para|More text",
+    looseText,
+  );
+
   console.log("\ncomputed path — class→page mapping (optional, needs Playwright + Chromium):");
   try {
     const { chromium } = await import("playwright");

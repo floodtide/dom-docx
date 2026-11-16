@@ -175,7 +175,16 @@ export function buildBodySections(
   const chunks: Array<{ orientation: PageOrientationName | undefined; htmlParts: string[] }> = [];
   for (const node of $("body").contents().toArray()) {
     if (node.type === "tag" && node.name.toLowerCase() === "style") continue;
-    if (node.type === "text" && !(node.data ?? "").trim()) continue;
+    if (node.type === "text") {
+      // Loose text at the top level belongs to the surrounding content.
+      const last = chunks.at(-1);
+      if (last) {
+        last.htmlParts.push($.html(node));
+      } else if ((node.data ?? "").trim()) {
+        chunks.push({ orientation: baseOrientation, htmlParts: [$.html(node)] });
+      }
+      continue;
+    }
 
     if (node.type !== "tag") continue;
 
