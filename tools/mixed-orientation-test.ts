@@ -44,6 +44,18 @@ function sectPrCount(xml: string): number {
   return (xml.match(/<w:sectPr/g) ?? []).length;
 }
 
+function bodySections(xml: string): Array<{ orient?: string; text: string }> {
+  const body = xml.match(/<w:body[^>]*>([\s\S]*)<\/w:body>/)?.[1] ?? "";
+  const sections: Array<{ orient?: string; text: string }> = [];
+  const re =
+    /([\s\S]*?)<w:sectPr[\s\S]*?<w:pgSz w:w="\d+" w:h="\d+"(?: w:orient="(\w+)")?[\s\S]*?<\/w:sectPr>/g;
+  for (const match of body.matchAll(re)) {
+    const text = [...match[1].matchAll(/<w:t[^>]*>([^<]*)<\/w:t>/g)].map((t) => t[1]).join("");
+    sections.push({ orient: match[2], text });
+  }
+  return sections;
+}
+
 const CLASS_MAPPING_HTML = `
 <style>
   @page { size: 8.5in 11in; }
@@ -170,6 +182,43 @@ async function main(): Promise<void> {
     "text outside any tag reaches the document",
     looseText === "Hello |world|para|More text",
     looseText,
+  );
+
+  const afterLandscape = bodySections(
+    await documentXml(`<div style="page:landscape">Chart</div> after`),
+  );
+  check(
+    "text after a landscape block starts a base section",
+    afterLandscape.length === 2 &&
+      afterLandscape[0]?.orient === "landscape" &&
+      afterLandscape[0]?.text === "Chart" &&
+      afterLandscape[1]?.orient === "portrait" &&
+      afterLandscape[1]?.text === "after",
+    JSON.stringify(afterLandscape),
+  );
+
+  const betweenLandscape = bodySections(
+    await documentXml(
+      `<div style="page:landscape">A</div> note <div style="page:landscape">B</div>`,
+    ),
+  );
+  check(
+    "text between landscape blocks is its own base section",
+    betweenLandscape.length === 3 &&
+      betweenLandscape[0]?.orient === "landscape" &&
+      betweenLandscape[0]?.text === "A" &&
+      betweenLandscape[1]?.orient === "portrait" &&
+      betweenLandscape[1]?.text === "note" &&
+      betweenLandscape[2]?.orient === "landscape" &&
+      betweenLandscape[2]?.text === "B",
+    JSON.stringify(betweenLandscape),
+  );
+
+  const samePageText = bodySections(await documentXml(`<p>A</p> mid <p>B</p>`));
+  check(
+    "text between same-orientation blocks stays in that section",
+    samePageText.length === 1 && samePageText[0]?.text === "Amid B",
+    JSON.stringify(samePageText),
   );
 
   console.log("\ncomputed path — class→page mapping (optional, needs Playwright + Chromium):");

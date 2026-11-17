@@ -176,12 +176,19 @@ export function buildBodySections(
   for (const node of $("body").contents().toArray()) {
     if (node.type === "tag" && node.name.toLowerCase() === "style") continue;
     if (node.type === "text") {
-      // Loose text at the top level belongs to the surrounding content.
+      // Loose text has no CSS `page` value. Blank text never opens a section.
+      // Non-blank text stays in the open chunk only when that chunk is already
+      // the document orientation; otherwise it starts a base-orientation
+      // section, the same way an unstyled element does.
+      const text = node.data ?? "";
+      const rendered = $.html(node);
       const last = chunks.at(-1);
-      if (last) {
-        last.htmlParts.push($.html(node));
-      } else if ((node.data ?? "").trim()) {
-        chunks.push({ orientation: baseOrientation, htmlParts: [$.html(node)] });
+      if (!text.trim()) {
+        if (last) last.htmlParts.push(rendered);
+      } else if (last && last.orientation === baseOrientation) {
+        last.htmlParts.push(rendered);
+      } else {
+        chunks.push({ orientation: baseOrientation, htmlParts: [rendered] });
       }
       continue;
     }
