@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## 1.0.5
+
+### Fixed
+
+- **Text outside any element at the top of the fragment was dropped.** `buildBodySections`, which splits the body into portrait and landscape sections, skipped every top-level node that was not an element. Loose text never reached `htmlToDocxBlocks`, which already turns it into a normal paragraph. `convertHtmlToDocx("Just bare text")` produced an empty document, and `Dear customer, your order <b>#123</b> has shipped.` kept only `#123`. Those text nodes are now included. Pull request [#14](https://github.com/floodtide/dom-docx/pull/14). Credit: [jayhemnani9910](https://github.com/jayhemnani9910).
+- **Loose text after a landscape section stayed on that page and could fuse the next landscape block into it.** Text has no CSS `page` value, so it was appended to whatever section was already open. Non-blank text now stays in the open section only when that section is already the document orientation; otherwise it starts a base-orientation section, the same way an unstyled element does. `<div style="page:landscape">Chart</div> after` is landscape then portrait, and text between two landscape blocks is its own portrait section.
+
+### Added
+
+- **Mixed-orientation guard coverage for top-level text.** `guard:mixed-orientation` checks that loose text reaches the document, that text after a landscape block starts a portrait section, that text between landscape blocks is its own portrait section, and that text between same-orientation blocks stays in that section.
+
 ## 1.0.4
 
 ### Fixed
