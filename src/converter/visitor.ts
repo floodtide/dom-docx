@@ -1019,8 +1019,28 @@ function resolveListReference(
  */
 let nextOrderedListInstance = 0;
 
+/**
+ * `docx` reads a list's first number from its numbering reference, so each
+ * `<ol start="N">` gets a reference of its own (`numbers-start-3`). Collected
+ * per document build and added to the numbering config by `build-docx`.
+ */
+const orderedListStartReferences = new Map<string, { base: string; start: number }>();
+
 export function resetOrderedListInstances(): void {
   nextOrderedListInstance = 0;
+  orderedListStartReferences.clear();
+}
+
+export function orderedListStartReferencesInUse(): { reference: string; base: string; start: number }[] {
+  return [...orderedListStartReferences].map(([reference, value]) => ({ reference, ...value }));
+}
+
+function withListStart(listRef: string, listElement: Element): string {
+  const start = Number(listElement.attribs?.start);
+  if (!isOrderedListReference(listRef) || !Number.isInteger(start) || start < 0 || start === 1) return listRef;
+  const reference = `${listRef}-start-${start}`;
+  orderedListStartReferences.set(reference, { base: listRef, start });
+  return reference;
 }
 
 function takeOrderedListInstance(): number {
@@ -1038,7 +1058,7 @@ export function processList(
   ctx: VisitorContext,
 ): DocxBlock[] {
   const tag = listElement.name.toLowerCase();
-  const listRef = resolveListReference(listElement, tag, ctx.styleResolver);
+  const listRef = withListStart(resolveListReference(listElement, tag, ctx.styleResolver), listElement);
   // Allocate even for a nested `<ol>`. A nested list is its own counter in HTML,
   // and sharing the parent's instance makes a second nested `<ol>` continue.
   const listInstance = isOrderedListReference(listRef) ? takeOrderedListInstance() : undefined;

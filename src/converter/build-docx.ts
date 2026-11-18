@@ -23,7 +23,7 @@ import {
   type BodySection,
   type PageOrientationName,
 } from "./page-orientation.js";
-import { htmlToDocxBlocks, resetOrderedListInstances } from "./visitor.js";
+import { htmlToDocxBlocks, orderedListStartReferencesInUse, resetOrderedListInstances } from "./visitor.js";
 
 /**
  * Diagnostic callback for conditions that don't fail the conversion but silently
@@ -269,6 +269,17 @@ function buildHeader(
   });
 }
 
+/** Adds a numbering reference for each `<ol start="N">` (see `orderedListStartReferencesInUse`). */
+function numberingConfigWithListStarts(): typeof NUMBERING_CONFIG {
+  const extra = orderedListStartReferencesInUse().flatMap(({ reference, base, start }) => {
+    const config = NUMBERING_CONFIG.config.find((c) => c.reference === base);
+    if (!config) return [];
+    const [first, ...rest] = config.levels;
+    return first ? [{ reference, levels: [{ ...first, start }, ...rest] }] : [];
+  });
+  return extra.length > 0 ? { config: [...NUMBERING_CONFIG.config, ...extra] } : NUMBERING_CONFIG;
+}
+
 async function packDocxToUint8Array(
   bodySections: BodySection[],
   resolved: ResolvedConfig,
@@ -285,7 +296,7 @@ async function packDocxToUint8Array(
       : [{ orientation: resolved.defaultOrientation, children: [] }];
   const doc = new Document({
     ...resolved.metadata,
-    numbering: NUMBERING_CONFIG,
+    numbering: numberingConfigWithListStarts(),
     styles: {
       default: {
         document: {

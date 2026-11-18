@@ -178,6 +178,17 @@ async function main(): Promise<void> {
     check("disc ol: bullets share a numId", ids[0] === ids[1], ids.join(","));
   }
 
+  console.log("\n<ol start> continues the numbering:");
+  {
+    const xml = await parts('<ol><li>One</li><li>Two</li></ol><p>Note.</p><ol start="3"><li>Three</li></ol><ol type="a" start="2"><li>b</li></ol>');
+    const ids = numIds(xml["word/document.xml"] ?? "");
+    const numbering = xml["word/numbering.xml"] ?? "";
+    check("ol start: 4 numbered items", ids.length === 4, ids.join(","));
+    check("ol start: first list starts at 1", level0Start(concreteNum(numbering, ids[0]!)) === "1", concreteNum(numbering, ids[0]!));
+    check('ol start="3" starts at 3', level0Start(concreteNum(numbering, ids[2]!)) === "3", concreteNum(numbering, ids[2]!));
+    check('ol type="a" start="2" starts at 2', level0Start(concreteNum(numbering, ids[3]!)) === "2", concreteNum(numbering, ids[3]!));
+  }
+
   const ok = failures === 0;
   await writeGuardResult({
     id: "list-numbering",
