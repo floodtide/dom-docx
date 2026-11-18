@@ -1117,6 +1117,10 @@ function listItemLayout(layout: BlockLayout, ctx: VisitorContext): {
   return { layout: itemLayout, extra };
 }
 
+function isInlineOnly(element: Element, styleResolver: StyleResolver): boolean {
+  return (element.children ?? []).every((n) => !isElement(n) || !isBlockElement(n, styleResolver));
+}
+
 function processListItem(
   $: CheerioAPI,
   li: Element,
@@ -1138,14 +1142,35 @@ function processListItem(
     );
   }
 
+  // `<li><p>…</p></li>` (what Markdown renders for loose lists): with no text of
+  // its own, the item's marker goes on its first paragraph.
+  let markerPlaced = inlineNodes.length > 0;
   for (const child of li.children ?? []) {
     if (!isElement(child)) continue;
     const tag = child.name.toLowerCase();
     if (tag === "ul" || tag === "ol") {
       blocks.push(...processList($, child, { ...ctx, listLevel: ctx.listLevel + 1 }));
     } else if (isBlockElement(child, ctx.styleResolver)) {
-      blocks.push(...visitElement($, child, ctx));
+      if (!markerPlaced && (tag === "p" || tag === "div") && isInlineOnly(child, ctx.styleResolver)) {
+        blocks.push(
+          ...emitBlockContent(
+            collectInlineRunsFromNodes(
+              child.children ?? [],
+              typographyFromBlockElement(child, ctx.styleResolver),
+              undefined,
+              ctx.styleResolver,
+              ctx.defaultSizeHalfPoints,
+              ctx.fieldOptions,
+            ),
+            layout,
+            extra,
+          ),
+        );
+      } else {
+        blocks.push(...visitElement($, child, ctx));
+      }
     }
+    markerPlaced = markerPlaced || blocks.length > 0;
   }
 
   if (blocks.length === 0) {

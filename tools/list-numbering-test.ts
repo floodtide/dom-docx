@@ -178,6 +178,18 @@ async function main(): Promise<void> {
     check("disc ol: bullets share a numId", ids[0] === ids[1], ids.join(","));
   }
 
+  console.log("\nItems whose text is in a <p> (loose Markdown lists) keep their marker:");
+  {
+    const xml = await parts("<ol><li><p>Install</p></li><li><p>Configure</p><p>Then restart.</p></li></ol>");
+    const doc = xml["word/document.xml"] ?? "";
+    const paras = [...doc.matchAll(/<w:p[ >][\s\S]*?<\/w:p>/g)].map((m) => m[0]);
+    const numbered = (text: string) => paras.some((p) => p.includes(`>${text}<`) && /<w:numId /.test(p));
+    check("li > p: first item numbered", numbered("Install"));
+    check("li > p: second item numbered", numbered("Configure"));
+    check("li > p: second paragraph of an item has no marker", !numbered("Then restart."));
+    check("li > p: one list", new Set(numIds(doc)).size === 1, numIds(doc).join(","));
+  }
+
   const ok = failures === 0;
   await writeGuardResult({
     id: "list-numbering",
