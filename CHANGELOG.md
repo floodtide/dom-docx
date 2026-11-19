@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+### Fixed
+
+- **A list item whose text sits in a paragraph lost its number or bullet.** `processListItem` put the marker only on the item's own inline text. `<li><p>…</p></li>` — what Markdown renderers write for a loose list — became an ordinary paragraph, so Word and LibreOffice showed the text with no marker. When the item has no inline text of its own, the marker now goes on its first `<p>` or `<div>` that holds only inline content. A later paragraph in the same item stays unnumbered. Pull request [#15](https://github.com/floodtide/dom-docx/pull/15). Credit: [jayhemnani9910](https://github.com/jayhemnani9910).
+- **`<ol start>` was ignored, so a numbered list that continues after a paragraph started again at 1.** `processList` never read `start`, and `docx` takes a list's first number from its numbering reference. An ordered list with a `start` other than 1 now gets its own reference (`numbers-start-3`, `numbers-lower-alpha-start-2`, …) with that level-0 start, and still gets its own numbering instance. `<ol start="3">` starts at 3, and `<ol type="a" start="2">` starts at b. A nested `<ol start>` still begins at 1, because the override is on numbering level 0 and a nested item is level 1. Pull request [#16](https://github.com/floodtide/dom-docx/pull/16). Credit: [jayhemnani9910](https://github.com/jayhemnani9910).
+
+### Added
+
+- **List-numbering guard coverage for both fixes.** `guard:list-numbering` checks that `<li><p>` items keep their marker and that a second paragraph in the item does not, and that `<ol start="3">` and `<ol type="a" start="2">` write `startOverride` 3 and 2.
+
 ## 1.0.5
 
 ### Fixed
