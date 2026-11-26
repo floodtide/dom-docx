@@ -220,22 +220,26 @@ async function computedVerticalAlignChecks(): Promise<void> {
   );
 
   // Optional end-to-end: class + inline vertical-align through styleSource "computed".
+  // Skipped when Playwright or its Chromium build is missing (e.g. CI installs the
+  // package but not the browser) — the conversion itself is what launches Chromium.
+  let xml: string;
   try {
     await import("playwright");
-  } catch {
-    console.log("  · skipped Playwright section (playwright not installed)");
+    const html = `
+      <style>.top { vertical-align: top }</style>
+      <table border="1"><tr>
+        <td>a<br>b<br>c</td>
+        <td class="top">class top</td>
+        <td style="vertical-align:bottom">inline bottom</td>
+        <td>default</td>
+      </tr></table>`;
+    const buffer = await convertHtmlToDocx(html, { styleSource: "computed", onWarning: null });
+    xml = new TextDecoder().decode(unzipSync(new Uint8Array(buffer))["word/document.xml"]!);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.log(`  · skipped Playwright section (${msg.split("\n")[0]})`);
     return;
   }
-  const html = `
-    <style>.top { vertical-align: top }</style>
-    <table border="1"><tr>
-      <td>a<br>b<br>c</td>
-      <td class="top">class top</td>
-      <td style="vertical-align:bottom">inline bottom</td>
-      <td>default</td>
-    </tr></table>`;
-  const buffer = await convertHtmlToDocx(html, { styleSource: "computed", onWarning: null });
-  const xml = new TextDecoder().decode(unzipSync(new Uint8Array(buffer))["word/document.xml"]!);
   const vAlign = cells(xml).map((c) => c.match(/<w:vAlign w:val="(\w+)"/)?.[1]);
   check(
     "computed: default / class top / inline bottom / default → center, top, bottom, center",
