@@ -78,7 +78,10 @@ export function parsedCssFromComputedRecord(raw: Record<string, string>): Parsed
   const rawWidth = raw.width?.trim();
   if (rawWidth?.endsWith("%")) css.widthPercent = parseFloat(rawWidth);
   else css.widthTwips = parseLengthPx(raw.width);
-  css.maxWidthTwips = parseLengthPx(raw.maxWidth);
+  // max-width percentages survive getComputedStyle (unlike width), so keep them as %.
+  const rawMaxWidth = raw.maxWidth?.trim();
+  if (rawMaxWidth?.endsWith("%")) css.maxWidthPercent = parseFloat(rawMaxWidth);
+  else css.maxWidthTwips = parseLengthPx(raw.maxWidth);
 
   css.borderTop = computedBorderSide(raw.borderTopWidth ?? "", raw.borderTopColor ?? "");
   css.borderRight = computedBorderSide(raw.borderRightWidth ?? "", raw.borderRightColor ?? "");
@@ -93,6 +96,10 @@ export function parsedCssFromComputedRecord(raw: Record<string, string>): Parsed
   }
 
   css.writingMode = raw.writingMode?.trim().toLowerCase() || undefined;
+  // Cell alignment (td/th compute to `middle` by default) and super/sub runs.
+  css.verticalAlign = raw.verticalAlign?.trim().toLowerCase() || undefined;
+  const transform = raw.transform?.trim().toLowerCase();
+  css.transform = transform && transform !== "none" ? transform : undefined;
   css.textOrientation = raw.textOrientation?.trim().toLowerCase() || undefined;
 
   return css;

@@ -53,6 +53,8 @@
     "breakBefore",
     "breakAfter",
     "writingMode",
+    "transform",
+    "verticalAlign",
     "textOrientation",
   ];
 

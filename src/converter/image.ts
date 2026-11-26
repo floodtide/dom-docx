@@ -2,6 +2,7 @@ import { ImageRun } from "docx";
 import type { CheerioAPI } from "cheerio";
 import type { Element } from "domhandler";
 import { PRINTABLE_CONTENT_WIDTH_TWIPS } from "./constants.js";
+import type { ParsedCss } from "./css.js";
 
 /** Printable content width in CSS px (9360 twips ÷ 15 twips/px at 96 DPI = 624px). */
 const MAX_IMAGE_WIDTH_PX = PRINTABLE_CONTENT_WIDTH_TWIPS / 15;
@@ -171,9 +172,16 @@ export function resetImageDocPrIds(): void {
  * Build a docx `ImageRun` from an `<img>` element. Supports base64 `data:` raster
  * URLs (png/jpg/gif/bmp). Display size comes from `width`/`height` attributes,
  * falling back to the image's natural size (aspect-preserved if only one is given).
+ * The size is clamped (aspect-preserved) to the printable width, the width of the
+ * containing block (`contentWidthTwips`, e.g. a table cell's content box) and the
+ * element's CSS `max-width` (px or % of the containing block).
  * Returns null for unsupported sources (e.g. remote URLs) — caller drops to alt text.
  */
-export function imageRunFromElement(element: Element): ImageRun | null {
+export function imageRunFromElement(
+  element: Element,
+  css: ParsedCss = {},
+  contentWidthTwips: number = PRINTABLE_CONTENT_WIDTH_TWIPS,
+): ImageRun | null {
   const src = element.attribs?.src;
   if (!src) return null;
 
@@ -195,9 +203,21 @@ export function imageRunFromElement(element: Element): ImageRun | null {
   // `max-width: 100%`. Without this, a full-resolution image (e.g. a 1520px docs
   // diagram) is emitted at its natural pixel size — ~16" wide — so it overflows the
   // page margins, gets its right edge clipped, and spills across pages.
-  if (width! > MAX_IMAGE_WIDTH_PX) {
-    height = Math.round((MAX_IMAGE_WIDTH_PX / width!) * height!);
-    width = Math.round(MAX_IMAGE_WIDTH_PX);
+  // The containing block narrows that further (a 260px image in a 150px cell), as do
+  // `max-width: 120px` / `max-width: 50%`. A degenerate (zero-width) container is
+  // ignored rather than collapsing the image to nothing.
+  const containerPx = contentWidthTwips > 0 ? contentWidthTwips / 15 : MAX_IMAGE_WIDTH_PX;
+  const maxWidthPx = Math.min(
+    MAX_IMAGE_WIDTH_PX,
+    containerPx,
+    css.maxWidthTwips !== undefined && css.maxWidthTwips > 0 ? css.maxWidthTwips / 15 : Infinity,
+    css.maxWidthPercent !== undefined && css.maxWidthPercent > 0
+      ? (containerPx * css.maxWidthPercent) / 100
+      : Infinity,
+  );
+  if (width! > maxWidthPx) {
+    height = Math.max(1, Math.round((maxWidthPx / width!) * height!));
+    width = Math.max(1, Math.floor(maxWidthPx));
   }
 
   const docPrId = String(nextImageDocPrId++);

@@ -201,6 +201,8 @@ function cellShading(cell: ParsedCell, styleResolver: StyleResolver) {
  * `vertical-lr` strictly maps to `tbLrV` (lines stack left-to-right), but the
  * docx library only exposes tbRl/btLr — identical for the single-line header
  * case, which is what vertical cells are in practice.
+ * A half-turn `transform` on a vertical cell (the common "upward header" idiom
+ * `writing-mode: vertical-rl; transform: rotate(180deg)`) flips it to bottom-to-top.
  */
 function cellTextDirection(
   css: ParsedCss,
@@ -213,12 +215,39 @@ function cellTextDirection(
     case "tb-rl":
     case "tb":
     case "tb-lr":
+      if (isHalfTurnTransform(css.transform)) return TextDirection.BOTTOM_TO_TOP_LEFT_TO_RIGHT;
       return TextDirection.TOP_TO_BOTTOM_RIGHT_TO_LEFT; // rotated 90° clockwise
     case "sideways-lr":
       return TextDirection.BOTTOM_TO_TOP_LEFT_TO_RIGHT; // rotated 90° counter-clockwise
     default:
       return undefined;
   }
+}
+
+const ANGLE_UNIT_TO_DEG: Record<string, number> = { deg: 1, turn: 360, rad: 180 / Math.PI, grad: 0.9 };
+
+/**
+ * True when `transform` is a single 180° rotation: `rotate(180deg)` / `rotate(.5turn)` /
+ * `rotate(-180deg)` … as authored, or the `matrix(-1, ~0, ~0, -1, 0, 0)` that
+ * getComputedStyle reports for it (with float noise such as 1.22465e-16).
+ */
+function isHalfTurnTransform(transform: string | undefined): boolean {
+  if (!transform) return false;
+  const value = transform.replace(/\s+/g, "").toLowerCase();
+  const rotate = value.match(/^rotate(?:z)?\((-?(?:\d+\.?\d*|\.\d+))(deg|turn|rad|grad)\)$/);
+  if (rotate) {
+    const degrees = parseFloat(rotate[1]!) * ANGLE_UNIT_TO_DEG[rotate[2]!]!;
+    const normalized = ((degrees % 360) + 360) % 360;
+    return Math.abs(normalized - 180) < 0.5;
+  }
+  const matrix = value.match(/^matrix\(([^)]*)\)$/);
+  if (matrix) {
+    const [a, b, c, d] = matrix[1]!.split(",").map(Number);
+    const near = (x: number | undefined, target: number) =>
+      x !== undefined && Number.isFinite(x) && Math.abs(x - target) < 1e-6;
+    return near(a, -1) && near(b, 0) && near(c, 0) && near(d, -1);
+  }
+  return false;
 }
 
 function cellResolvedTextAlign(cell: ParsedCell, css: ParsedCss): string | undefined {
@@ -231,16 +260,31 @@ function verticalGlyphStripWidthTwips(css: ParsedCss): number {
 }
 
 /**
- * Browsers center vertical labels across the narrow column (`text-align:center`
- * on `<th>`). Word ignores w:jc for tbRl on the column axis — vAlign center on
- * the cell is the closest native hook.
+ * Horizontal cells: CSS `vertical-align` → w:vAlign, defaulting to center like browsers.
+ * Vertical (rotated) cells: browsers center labels across the narrow column
+ * (`text-align:center` on `<th>`). Word ignores w:jc for tbRl on the column axis —
+ * vAlign center on the cell is the closest native hook. (For rotated text w:vAlign
+ * acts on the column axis, so CSS `vertical-align` is not mapped there.)
  */
 function cellTableVerticalAlign(
   cell: ParsedCell,
   styleResolver: StyleResolver,
 ): (typeof VerticalAlignTable)[keyof typeof VerticalAlignTable] | undefined {
   const css = resolveCellCss(cell, styleResolver);
-  if (!cellTextDirection(css)) return undefined;
+  if (!cellTextDirection(css)) {
+    // Browsers center cells by default (UA `tr { vertical-align: middle }`) while
+    // Word's default is top, so unset maps to CENTER. `baseline` (and other inline
+    // keywords) put content at the top of a cell's line box — closest to TOP.
+    switch (css.verticalAlign) {
+      case undefined:
+      case "middle":
+        return VerticalAlignTable.CENTER;
+      case "bottom":
+        return VerticalAlignTable.BOTTOM;
+      default:
+        return VerticalAlignTable.TOP;
+    }
+  }
   if (cellResolvedTextAlign(cell, css) === "center") return VerticalAlignTable.CENTER;
   return undefined;
 }
@@ -255,6 +299,22 @@ function elementPlainText(element: Element): string {
   }
   walk(element.children ?? []);
   return parts.join("").replace(/\s+/g, " ").trim();
+}
+
+/** Plain text split at `<br>` — one whitespace-collapsed string per rendered line. */
+function elementPlainTextLines(element: Element): string[] {
+  const lines = [""];
+  function walk(nodes: AnyNode[]): void {
+    for (const node of nodes) {
+      if (node.type === "text") lines[lines.length - 1] += node.data ?? "";
+      else if (node.type === "tag") {
+        if (node.name.toLowerCase() === "br") lines.push("");
+        else walk(node.children ?? []);
+      }
+    }
+  }
+  walk(element.children ?? []);
+  return lines.map((line) => line.replace(/\s+/g, " ").trim());
 }
 
 function cellContentIsBold(cell: ParsedCell, styleResolver: StyleResolver): boolean {
@@ -582,6 +642,7 @@ function tableDeclaredWidth(
   // Email idiom: fluid width capped by max-width (`width:100%;max-width:600px`
   // parses as percent above; bare max-width acts as the effective width).
   if (maxWidth !== undefined) return { twips: maxWidth };
+  if (css.maxWidthPercent !== undefined) return { percent: css.maxWidthPercent };
   return {};
 }
 
@@ -724,12 +785,21 @@ function cellParagraph(
   styleResolver: StyleResolver,
   nodes?: AnyNode[],
   fieldOptions?: InlineFieldOptions,
+  contentWidthTwips?: number,
 ): Paragraph {
   const css = resolveCellCss(cell, styleResolver);
   const typography = cellTypography(cell, styleResolver);
   const content = nodes ?? cell.element.children ?? [];
   const children = content.length
-    ? collectInlineRunsFromNodes(content, typography, undefined, styleResolver, undefined, fieldOptions)
+    ? collectInlineRunsFromNodes(
+        content,
+        typography,
+        undefined,
+        styleResolver,
+        undefined,
+        fieldOptions,
+        contentWidthTwips,
+      )
     : [new TextRun("")];
   const hasImage = nodesContainImage(content);
   const verticalText = Boolean(cellTextDirection(css));
@@ -760,6 +830,7 @@ function cellBlockParagraph(
   styleResolver: StyleResolver,
   element: Element,
   fieldOptions?: InlineFieldOptions,
+  contentWidthTwips?: number,
 ): Paragraph {
   const cellCss = resolveCellCss(cell, styleResolver);
   const blockCss = styleResolver.getCss(element);
@@ -815,6 +886,7 @@ function cellBlockParagraph(
       styleResolver,
       undefined,
       fieldOptions,
+      contentWidthTwips,
     ),
   });
 }
@@ -856,6 +928,9 @@ function barParagraph(css: ParsedCss, contentWidthTwips: number): Paragraph {
       ? Math.round((css.widthPercent / 100) * contentWidthTwips)
       : (css.widthTwips ?? contentWidthTwips);
   if (css.maxWidthTwips !== undefined) barWidth = Math.min(barWidth, css.maxWidthTwips);
+  if (css.maxWidthPercent !== undefined) {
+    barWidth = Math.min(barWidth, Math.round((css.maxWidthPercent / 100) * contentWidthTwips));
+  }
   barWidth = Math.max(0, Math.min(barWidth, contentWidthTwips));
   return new Paragraph({
     shading: { type: ShadingType.CLEAR, fill: css.backgroundColor!, color: "auto" },
@@ -899,18 +974,26 @@ function cellBlocks(
   fieldOptions?: InlineFieldOptions,
 ): (Paragraph | Table)[] {
   const nodes = cell.element.children ?? [];
-  if (!cellHasBlockContent(nodes, styleResolver)) {
-    return [cellParagraph(cell, styleResolver, undefined, fieldOptions)];
-  }
-
+  // Content box: the cell's own CSS padding wins over the table `cellpadding`.
   const cellWidth = sumColumnWidths(columnWidths, columnIndex, cell.colspan);
-  const contentWidth = Math.max(0, cellWidth - (cellPadding ?? 0) * 2);
+  const cellCss = styleResolver.getCss(cell.element);
+  const contentWidth = Math.max(
+    0,
+    cellWidth - (cellCss.paddingLeft ?? cellPadding ?? 0) - (cellCss.paddingRight ?? cellPadding ?? 0),
+  );
+  if (!cellHasBlockContent(nodes, styleResolver)) {
+    return [cellParagraph(cell, styleResolver, undefined, fieldOptions, contentWidth)];
+  }
 
   const blocks: (Paragraph | Table)[] = [];
   let pending: AnyNode[] = [];
+  // Vertical gap owed after the last emitted table: its margin-bottom plus the
+  // padding of any wrappers closed since. Only consumed if another table follows.
+  let pendingTableGap = 0;
+  const lastIsTable = (): boolean => blocks[blocks.length - 1] instanceof Table;
   const flushInline = (): void => {
     if (pending.some(nodeHasInlineContent)) {
-      blocks.push(cellParagraph(cell, styleResolver, pending, fieldOptions));
+      blocks.push(cellParagraph(cell, styleResolver, pending, fieldOptions, contentWidth));
     }
     pending = [];
   };
@@ -923,12 +1006,29 @@ function cellBlocks(
         const tag = el.name.toLowerCase();
         if (tag === "table") {
           flushInline();
+          const tableCss = styleResolver.getCss(el);
+          if (lastIsTable()) {
+            // Word fuses directly adjacent tables into one grid; an empty EXACT
+            // paragraph keeps them separate and carries the CSS gap between them.
+            blocks.push(
+              new Paragraph({
+                spacing: {
+                  before: 0,
+                  after: 0,
+                  line: Math.max(1, pendingTableGap, tableCss.marginTop ?? 0),
+                  lineRule: LineRuleType.EXACT,
+                },
+                children: [],
+              }),
+            );
+          }
           blocks.push(convertTable($, el, styleResolver, contentWidth, true, fieldOptions));
+          pendingTableGap = tableCss.marginBottom ?? 0;
           continue;
         }
         if (/^(?:p|h[1-6])$/.test(tag)) {
           flushInline();
-          blocks.push(cellBlockParagraph(cell, styleResolver, el, fieldOptions));
+          blocks.push(cellBlockParagraph(cell, styleResolver, el, fieldOptions, contentWidth));
           continue;
         }
         if (tag === "ul" || tag === "ol") {
@@ -949,8 +1049,11 @@ function cellBlocks(
           // process its children at this level so nested paragraphs/tables stay
           // real blocks instead of flattening into one run-on paragraph.
           flushInline();
+          const wrapperCss = styleResolver.getCss(el);
+          if (lastIsTable()) pendingTableGap += wrapperCss.paddingTop ?? 0;
           walk(el.children ?? []);
           flushInline();
+          if (lastIsTable()) pendingTableGap += wrapperCss.paddingBottom ?? 0;
           continue;
         }
       }
@@ -961,7 +1064,9 @@ function cellBlocks(
   walk(nodes);
   flushInline();
 
-  return blocks.length > 0 ? blocks : [cellParagraph(cell, styleResolver, undefined, fieldOptions)];
+  return blocks.length > 0
+    ? blocks
+    : [cellParagraph(cell, styleResolver, undefined, fieldOptions, contentWidth)];
 }
 
 /** Explicit style borders on the cell itself (e.g. `border-right:1px solid #e2e8f0`). */
@@ -1124,13 +1229,15 @@ function estimateVerticalCellMinHeightTwips(
 ): number | undefined {
   const css = resolveCellCss(cell, styleResolver);
   if (!cellTextDirection(css)) return undefined;
-  const text = elementPlainText(cell.element);
-  if (!text) return undefined;
+  const lines = elementPlainTextLines(cell.element).filter(Boolean);
+  if (lines.length === 0) return undefined;
   const cellCss = styleResolver.getCss(cell.element);
   const padTop = cellCss.paddingTop ?? cellPadding ?? 0;
   const padBottom = cellCss.paddingBottom ?? cellPadding ?? 0;
-  // Rotated text runs along the row axis — horizontal text extent becomes row height.
-  const textHeight = estimateTextWidthTwips(text, cellTextMeasureOptions(cell, styleResolver));
+  // Rotated text runs along the row axis — the longest line's extent becomes row
+  // height (`<br>` lines stack across the column, not along the row).
+  const measure = cellTextMeasureOptions(cell, styleResolver);
+  const textHeight = Math.max(...lines.map((line) => estimateTextWidthTwips(line, measure)));
   return padTop + padBottom + textHeight;
 }
 

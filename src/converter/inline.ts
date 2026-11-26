@@ -205,6 +205,8 @@ export function collectInlineRunsFromNodes(
   styleResolver: StyleResolver = INLINE_STYLE_RESOLVER,
   defaultSize: number = BODY_FONT_HALF_POINTS,
   fieldOptions: InlineFieldOptions = DEFAULT_INLINE_FIELD_OPTIONS,
+  /** Width of the containing block (e.g. a table cell's content box) — clamps images. */
+  contentWidthTwips?: number,
 ): ParagraphChild[] {
   const runs: ParagraphChild[] = [];
 
@@ -262,7 +264,7 @@ export function collectInlineRunsFromNodes(
     }
 
     if (tag === "img") {
-      const image = imageRunFromElement(node);
+      const image = imageRunFromElement(node, styleResolver.getCss(node), contentWidthTwips);
       if (image) {
         runs.push(image);
       } else if (node.attribs?.alt) {
@@ -334,6 +336,7 @@ export function collectInlineRunsFromNodes(
         styleResolver,
         defaultSize,
         fieldOptions,
+        contentWidthTwips,
       );
       // Anchors with no inline content render as nothing in browsers (e.g. a
       // link that only wrapped an image) — unless they are a named target.
@@ -358,6 +361,7 @@ export function collectInlineRunsFromNodes(
       styleResolver,
       defaultSize,
       fieldOptions,
+      contentWidthTwips,
     );
     // Any inline element with `id` is a fragment target (e.g. `<span id="n">`).
     runs.push(...wrapWithBookmark(node.attribs?.id, childRuns));

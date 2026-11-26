@@ -62,7 +62,7 @@ Think “Word-friendly semantic HTML,” not “web app layout.”
 | **Emoji as UI icons** | Font/glyph mismatch in Word |
 | **External stylesheets** | Only inline `style=""` and a few attributes (`border`, `cellpadding`, `colspan`) |
 | **Grid / absolute / float layout** | No `position`, `float`, `grid-template` |
-| **CSS `transform` / arbitrary text rotation** | Intentionally out of scope. `transform: rotate(45deg)` and all other `transform` functions are ignored. Word cell text direction (`w:textDirection`) supports only 90° orientations, so diagonal/angled text has no native, in-flow equivalent — it would require a floating shape, which breaks editability and is not emitted. |
+| **CSS `transform` / arbitrary text rotation** | Intentionally out of scope. `transform: rotate(45deg)` and all other `transform` functions are ignored. Word cell text direction (`w:textDirection`) supports only 90° orientations, so diagonal/angled text has no native, in-flow equivalent — it would require a floating shape, which breaks editability and is not emitted. The one exception: a half turn (`rotate(180deg)`) on a table cell with a vertical `writing-mode` flips the label to read bottom-to-top, which is a native 90° direction. |
 | **Multi-column CSS** | No `column-count` |
 | **Web fonts** | Defaults to Arial; custom `@font-face` ignored |
 | **Forms, inputs, buttons** | Not supported |
@@ -223,6 +223,9 @@ Parsed from `style=""` on any element:
 | `flex-direction` | `row`, `column` |
 | `gap` | `gap:10px` (px; converted to twips internally) |
 | `width` | `width:100%` on tables |
+| `max-width` | `max-width:100%` or `max-width:120px` on `<img>` (images also shrink to fit their table cell); `max-width:50%` on boxed divs |
+| `vertical-align` | `top`, `middle`, `bottom` on `<td>` / `<th>` / `<tr>`; unset cells are centered like in the browser. `super` / `sub` on inline text |
+| `writing-mode` | `vertical-rl` on a header cell rotates its text 90°; add `transform:rotate(180deg)` to read bottom-to-top |
 
 Everything else is ignored silently.
 

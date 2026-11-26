@@ -51,6 +51,8 @@ export interface ParsedCss {
   widthTwips?: number;
   widthPercent?: number;
   maxWidthTwips?: number;
+  /** `max-width` as a percentage of the containing block. */
+  maxWidthPercent?: number;
   maxHeightTwips?: number;
   visibility?: string;
   opacity?: number;
@@ -77,6 +79,12 @@ export interface ParsedCss {
   pageBreakAfter?: boolean;
   /** CSS writing-mode — vertical modes rotate table cell text (w:textDirection). */
   writingMode?: string;
+  /**
+   * CSS transform — only read to detect a half turn on vertical cell text
+   * (`writing-mode: vertical-rl; transform: rotate(180deg)` reads bottom-to-top).
+   * All other transforms stay unsupported.
+   */
+  transform?: string;
   /** CSS text-orientation — `upright` has no OOXML equivalent and stays horizontal. */
   textOrientation?: string;
   /** CSS `vertical-align: super | sub` → superscript / subscript on text runs. */
@@ -152,6 +160,8 @@ const FONT_FAMILY_MAP: Record<string, string> = {
   tahoma: "Tahoma",
   "trebuchet ms": "Trebuchet MS",
   "segoe ui": "Arial",
+  // Not Arial: it carries the symbol glyphs (e.g. ballot boxes U+2610–2612) Arial lacks.
+  "segoe ui symbol": "Segoe UI Symbol",
   "courier new": "Courier New",
   courier: "Courier New",
   // Consolas: native in Word (ships with Office); LibreOffice substitutes its
@@ -562,9 +572,12 @@ export function parseInlineStyle(style: string | undefined): ParsedCss {
         else result.widthTwips = parseLength(value);
         break;
       }
-      case "max-width":
-        result.maxWidthTwips = parseLength(value);
+      case "max-width": {
+        const percent = value.trim().match(/^(\d+(?:\.\d+)?)\s*%$/);
+        if (percent) result.maxWidthPercent = parseFloat(percent[1]!);
+        else result.maxWidthTwips = parseLength(value);
         break;
+      }
       case "max-height":
         result.maxHeightTwips = parseLength(value);
         break;
@@ -675,6 +688,9 @@ export function parseInlineStyle(style: string | undefined): ParsedCss {
         break;
       case "writing-mode":
         result.writingMode = value.trim().toLowerCase();
+        break;
+      case "transform":
+        result.transform = value.trim().toLowerCase();
         break;
       case "text-orientation":
         result.textOrientation = value.trim().toLowerCase();
@@ -926,6 +942,7 @@ export function cssToBlockLayout(css: ParsedCss): BlockLayout {
     widthTwips: css.widthTwips,
     widthPercent: css.widthPercent,
     maxWidthTwips: css.maxWidthTwips,
+    maxWidthPercent: css.maxWidthPercent,
     spacingBefore: sumTwips(css.paddingTop, css.marginTop),
     spacingAfter: sumTwips(css.paddingBottom, css.marginBottom),
     indentLeft: sumTwips(css.marginLeft, css.paddingLeft),

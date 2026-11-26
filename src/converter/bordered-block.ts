@@ -31,8 +31,12 @@ function resolveTableWidth(layout: BlockLayout): number {
       ? Math.round((PRINTABLE_CONTENT_WIDTH_TWIPS * layout.widthPercent) / 100)
       : undefined;
   const requested = fromPercent ?? layout.widthTwips ?? PRINTABLE_CONTENT_WIDTH_TWIPS;
-  const clampedByMax =
-    layout.maxWidthTwips !== undefined ? Math.min(requested, layout.maxWidthTwips) : requested;
+  const maxFromPercent =
+    layout.maxWidthPercent !== undefined
+      ? Math.round((PRINTABLE_CONTENT_WIDTH_TWIPS * layout.maxWidthPercent) / 100)
+      : undefined;
+  const maxWidth = Math.min(layout.maxWidthTwips ?? Infinity, maxFromPercent ?? Infinity);
+  const clampedByMax = Math.min(requested, maxWidth);
   // Never exceed the printable width: a table wider than the page reflows badly in
   // Word/LibreOffice. Floor at 1 twip so the table stays structurally valid.
   return Math.max(1, Math.min(PRINTABLE_CONTENT_WIDTH_TWIPS, clampedByMax));

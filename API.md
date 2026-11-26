@@ -482,7 +482,10 @@ Parsed from `style=""` (and from computed snapshots on the computed path):
 | `page` (inline, top-level blocks) | dom-docx shorthand: `page:portrait`, `page:landscape`, or `page:Name` referencing a named `@page` rule — [Mixed page orientation](#mixed-page-orientation) |
 | `@page { size: … }` | In embedded `<style>`: infers document default or named-page **orientation** only (not custom dimensions in v1) |
 | `page` (class selector) | e.g. `div.Section2 { page: Wide }` — **computed path only** (`styleSource: "computed"`); ignored on the default inline path |
-| `writing-mode` | Table cells only: `vertical-rl` / `vertical-lr` / `sideways-rl` → text rotated 90° clockwise (`w:textDirection tbRl`); `sideways-lr` → 90° counter-clockwise (`btLr`). Inherits from the `<tr>`. |
+| `writing-mode` | Table cells only: `vertical-rl` / `vertical-lr` / `sideways-rl` → text rotated 90° clockwise (`w:textDirection tbRl`); `sideways-lr` → 90° counter-clockwise (`btLr`). Inherits from the `<tr>`. A row of rotated text with `<br>` lines is sized by its longest line. |
+| `transform` | Only a half turn on a vertical cell: `writing-mode: vertical-rl` + `rotate(180deg)` / `rotate(.5turn)` (or the equivalent computed `matrix(-1, 0, 0, -1, 0, 0)`) → bottom-to-top (`btLr`). Every other transform is ignored. |
+| `vertical-align` | Table cells: `top` / `middle` / `bottom` → `w:vAlign`; unset → center (the browser default — Word's own default is top); `baseline` → top. Inherits from the `<tr>`. Rotated cells keep center alignment. Inline text: `super` / `sub` → superscript / subscript. |
+| `max-width` | `px` or `%`. Images clamp to it and to their containing block (the page, or a table cell's width minus its padding); boxed/shaded blocks and tables use it as a width cap. |
 | `text-orientation` | `upright` cancels the rotation (stacked upright glyphs have no OOXML equivalent); `mixed` / `sideways` rotate as above |
 
 **Page break examples** (inline styles or computed stylesheet):

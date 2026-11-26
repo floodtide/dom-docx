@@ -75,6 +75,8 @@ export function snapshotComputedStylesFromDocument(
     "breakBefore",
     "breakAfter",
     "writingMode",
+    "transform",
+    "verticalAlign",
     "textOrientation",
   ] as const;
 

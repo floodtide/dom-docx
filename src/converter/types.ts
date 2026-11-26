@@ -43,6 +43,8 @@ export interface BlockLayout {
   widthPercent?: number;
   /** Optional CSS `max-width` clamp in twips. */
   maxWidthTwips?: number;
+  /** Optional CSS `max-width` clamp as percent of content width. */
+  maxWidthPercent?: number;
   borders?: BlockBorders;
   /** Line box height (px) for EXACT shaded paragraphs; defaults to body line height. */
   shadedContentLinePx?: number;

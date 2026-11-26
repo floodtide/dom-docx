@@ -895,7 +895,13 @@ function processBlockContainer(
   // text-align inherits (CSS): a container's alignment flows to block children
   // (`<figure>` captions, `<center>`, `<div align=center>` wrappers).
   const inheritAlignment = layout.alignment ? { alignment: layout.alignment } : undefined;
-  const childCtx: VisitorContext = { ...ctx, inheritedLayout: inheritAlignment };
+  // A pending page break belongs to the container's FIRST block only — passing it
+  // down in the shared child context put a break before every child.
+  const childCtx: VisitorContext = {
+    ...ctx,
+    inheritedLayout: inheritAlignment,
+    pageBreakBeforeNext: undefined,
+  };
 
   if (hasDirectBlockChild(element, ctx.styleResolver)) {
     const children = getDirectBlockChildren(element, ctx.styleResolver);
@@ -906,9 +912,11 @@ function processBlockContainer(
       if (topSpacer) blocks.push(topSpacer);
 
       const childBlocks: DocxBlock[] = [];
-      for (const child of children) {
-        childBlocks.push(...visitElement($, child, childCtx));
-      }
+      children.forEach((child, index) => {
+        const visitCtx =
+          index === 0 && ctx.pageBreakBeforeNext ? { ...childCtx, pageBreakBeforeNext: true } : childCtx;
+        childBlocks.push(...visitElement($, child, visitCtx));
+      });
       // Pass the container's own borders (e.g. a callout's border-left) — the
       // cell paints fill AND bar together.
       blocks.push(makeShadedContainerTable(childBlocks, layout, layout.borders));
@@ -1070,12 +1078,21 @@ export function processList(
   );
   if (topSpacer) blocks.push(topSpacer);
 
+  // A pending page break applies before the first item only, not every `<li>`.
+  let pageBreakBeforeNext = Boolean(ctx.pageBreakBeforeNext);
   $(listElement)
     .children("li")
     .each((_, li) => {
       blocks.push(
-        ...processListItem($, li, { ...ctx, listRef, listLevel: ctx.listLevel, listInstance }),
+        ...processListItem($, li, {
+          ...ctx,
+          listRef,
+          listLevel: ctx.listLevel,
+          listInstance,
+          pageBreakBeforeNext: pageBreakBeforeNext || undefined,
+        }),
       );
+      pageBreakBeforeNext = false;
     });
 
   const bottomSpacer = marginSpacer(marginBottom);
@@ -1165,11 +1182,15 @@ function processListItem(
   // `<li><p>…</p></li>` (what Markdown renders for loose lists): with no text of
   // its own, the item's marker goes on its first paragraph.
   let markerPlaced = inlineNodes.length > 0;
+  // A pending page break goes on the item's first block only, never on nested
+  // lists or later child blocks.
+  const restCtx: VisitorContext = { ...ctx, pageBreakBeforeNext: undefined };
   for (const child of li.children ?? []) {
     if (!isElement(child)) continue;
     const tag = child.name.toLowerCase();
+    const childCtx = blocks.length === 0 ? ctx : restCtx;
     if (tag === "ul" || tag === "ol") {
-      blocks.push(...processList($, child, { ...ctx, listLevel: ctx.listLevel + 1 }));
+      blocks.push(...processList($, child, { ...childCtx, listLevel: ctx.listLevel + 1 }));
     } else if (isBlockElement(child, ctx.styleResolver)) {
       if (!markerPlaced && (tag === "p" || tag === "div") && isInlineOnly(child, ctx.styleResolver)) {
         blocks.push(
@@ -1187,7 +1208,7 @@ function processListItem(
           ),
         );
       } else {
-        blocks.push(...visitElement($, child, ctx));
+        blocks.push(...visitElement($, child, childCtx));
       }
     }
     markerPlaced = markerPlaced || blocks.length > 0;
