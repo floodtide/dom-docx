@@ -823,6 +823,65 @@ const EDGE_TEST_CASES: TestCase[] = [
     `,
   },
   {
+    name: "definition-list-dd-indent",
+    description: "`<dl>` glossary: `<dd>` indented 40px (80px when nested), `<dt>` flush",
+    // Browsers indent `<dd>` via the UA stylesheet (`margin-inline-start: 40px`); with
+    // no inline style that indent has to be supplied by the converter, and it must
+    // accumulate through a `<dl>` nested in a `<dd>`. XML-level checks:
+    // tools/definition-list-test.ts.
+    html: `
+      <p><strong>Glossary</strong></p>
+      <dl>
+        <dt>Twip</dt>
+        <dd>A twentieth of a point; Word's layout unit (1440 per inch).</dd>
+        <dt>EMU</dt>
+        <dd>English Metric Unit, used for drawing sizes (914400 per inch).</dd>
+        <dd>Also written as "emu" in DrawingML attributes.</dd>
+        <dt>Run</dt>
+        <dd>
+          <dl>
+            <dt>Text run</dt>
+            <dd>A stretch of text with one set of character formatting.</dd>
+          </dl>
+        </dd>
+      </dl>
+      <p>Paragraph after the list.</p>
+    `,
+  },
+  {
+    name: "container-indent-nested-blocks",
+    description:
+      "Indented `<div>` (margin-left / margin-right): paragraph, list, table, quote, shaded box and flex row inside it stay in its content box",
+    // A container's margin offsets every child box in the browser. Each block type has
+    // its own carrier in OOXML (w:ind, list level indent, w:tblInd + narrower table,
+    // quote indent from the parent edge) — a regression snaps that child back to the
+    // page margin while its siblings stay indented. XML-level checks:
+    // tools/container-indent-test.ts.
+    html: `
+      <p><strong>Section notes</strong></p>
+      <div style="margin-left:40px">
+        <p>Paragraph inside the indented section.</p>
+        <ul>
+          <li>Bullet inside the section</li>
+          <li>Second bullet</li>
+        </ul>
+        <table border="1" cellpadding="4" style="border-collapse:collapse;width:100%">
+          <tr><td>Table cell A</td><td>Table cell B</td></tr>
+        </table>
+        <blockquote style="border-left:4px solid #333;padding-left:12px">Quoted line inside the section.</blockquote>
+        <div style="background:#e8eef7;padding:8px">Shaded note inside the section.</div>
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <div style="background:#ddd;padding:4px 8px">Chip one</div>
+          <div style="background:#ddd;padding:4px 8px">Chip two</div>
+        </div>
+      </div>
+      <div style="margin-right:160px">
+        <p>This paragraph sits in a container with a wide right margin, so its lines wrap well before the right edge of the page instead of running the full width.</p>
+      </div>
+      <p>Paragraph back at the page margin.</p>
+    `,
+  },
+  {
     name: "vertical-align-super-sub",
     description: "`vertical-align: super/sub` and `<sup>`/`<sub>` → OOXML superscript/subscript runs",
     html: `

@@ -18,6 +18,7 @@ const GUARDS = [
   "guard:config",
   "guard:fields",
   "guard:list-numbering",
+  "guard:container-indent",
   "guard:mixed-orientation",
   "guard:toc-slot",
   "guard:internal-href",

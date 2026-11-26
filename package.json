@@ -94,6 +94,7 @@
     "guard:font-family-map": "tsx tools/font-family-map-test.ts",
     "guard:fields": "tsx tools/fields-test.ts",
     "guard:list-numbering": "tsx tools/list-numbering-test.ts",
+    "guard:container-indent": "tsx tools/container-indent-test.ts",
     "guard:mixed-orientation": "tsx tools/mixed-orientation-test.ts",
     "research:wild": "tsx tools/wild-runner.ts",
     "research:wild-corpus": "tsx tools/wild-corpus-build.ts",

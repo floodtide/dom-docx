@@ -20,6 +20,7 @@ Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ### Added
 
 - **Regression coverage for these fixes.** New suite cases `image-max-width-constraints`, `table-cell-adjacent-nested-tables`, `table-cell-vertical-align`, `table-vertical-text-rotate-180` and `table-vertical-text-multiline`. New CI guards `guard:table-cell-layout` (image clamping, `max-width` percentages, nested-table separators, `w:vAlign` on both style paths), `guard:page-break-scope` (one `w:pageBreakBefore` per break) and `guard:font-family-map` (`w:rFonts` for Segoe UI Symbol). `guard:vertical-text` now also checks half-turn transforms and `<br>` row heights, and runs in `guard:ci`. The page-break and font fixes are guards, not suite cases: the HTML reference is a single screenshot with no pages, and LibreOffice on Linux has no Segoe UI Symbol, so neither can fail visually.
+- **Regression coverage for container indents.** New suite cases `definition-list-dd-indent` (a glossary with a nested `<dl>`) and `container-indent-nested-blocks` (a paragraph, list, table, blockquote, shaded box and flex row inside a `margin-left` container, plus a `margin-right` container). New CI guard `guard:container-indent` checks the exact `w:ind` and `w:tblInd` offsets on the inline path, and repeats the paragraph and definition-list checks through `styleSource: "computed"` when Playwright is installed.
 
 ## 1.0.6
 
