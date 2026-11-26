@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## Unreleased
+
+### Added
+
+- **Regression coverage for these fixes.** New suite cases `image-max-width-constraints`, `table-cell-adjacent-nested-tables`, `table-cell-vertical-align`, `table-vertical-text-rotate-180` and `table-vertical-text-multiline`. New CI guards `guard:table-cell-layout` (image clamping, `max-width` percentages, nested-table separators, `w:vAlign` on both style paths), `guard:page-break-scope` (one `w:pageBreakBefore` per break) and `guard:font-family-map` (`w:rFonts` for Segoe UI Symbol). `guard:vertical-text` now also checks half-turn transforms and `<br>` row heights, and runs in `guard:ci`. The page-break and font fixes are guards, not suite cases: the HTML reference is a single screenshot with no pages, and LibreOffice on Linux has no Segoe UI Symbol, so neither can fail visually.
+
 ## 1.0.6
 
 ### Fixed

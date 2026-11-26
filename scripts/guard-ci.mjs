@@ -26,6 +26,10 @@ const GUARDS = [
   "guard:document-canvas",
   "guard:image-spacing",
   "guard:chrome-image",
+  "guard:font-family-map",
+  "guard:table-cell-layout",
+  "guard:page-break-scope",
+  "guard:vertical-text",
   "guard:pack-smoke",
 ];
 

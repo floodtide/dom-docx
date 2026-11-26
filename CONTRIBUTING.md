@@ -93,7 +93,7 @@ npm run score:calibration -- --full
 
 ### 3. Guards — binary pass/fail invariants
 
-Each writes a result to `output/guards/<id>.json` (via `tools/guard-result.ts`, or an inlined equivalent in `scripts/pack-smoke.mjs` since it runs via plain `node`); `docs:sync` reads whichever are present into a single status table in BENCHMARK.md. `guard:inline`, `guard:config`, `guard:fields`, `guard:list-numbering`, `guard:mixed-orientation`, `guard:toc-slot`, `guard:internal-href`, `guard:bookmark-length`, `guard:border-width`, `guard:document-canvas`, `guard:image-spacing`, and `guard:pack-smoke` need no Playwright/LibreOffice and run in CI (`guard:document-canvas` and `guard:mixed-orientation` also run optional Playwright/LibreOffice sections when available); the remaining ones need Playwright/LibreOffice and are maintainer-only.
+Each writes a result to `output/guards/<id>.json` (via `tools/guard-result.ts`, or an inlined equivalent in `scripts/pack-smoke.mjs` since it runs via plain `node`); `docs:sync` reads whichever are present into a single status table in BENCHMARK.md. `guard:inline`, `guard:config`, `guard:fields`, `guard:list-numbering`, `guard:mixed-orientation`, `guard:toc-slot`, `guard:internal-href`, `guard:bookmark-length`, `guard:border-width`, `guard:document-canvas`, `guard:image-spacing`, `guard:font-family-map`, `guard:table-cell-layout`, `guard:page-break-scope`, `guard:vertical-text`, and `guard:pack-smoke` need no Playwright/LibreOffice and run in CI (`guard:document-canvas`, `guard:mixed-orientation` and `guard:table-cell-layout` also run optional Playwright/LibreOffice sections when available); the remaining ones need Playwright/LibreOffice and are maintainer-only.
 
 - **`guard:inline`** — converts every case via default options and via explicit `{ styleSource: "inline" }`; asserts byte-identical normalized `word/*.xml`. Catches accidental drift in the default path.
 - **`guard:config`** — a battery of named assertions (one per `DocumentConfig` field — `pageSize`, `margins`, `defaultFont`, `metadata`, `headerHtml`/`footerHtml`, `pageNumber`, `lang`/`direction`, `coverHtml`, `tocHtml`, …) that each produces the correct OOXML. **Runs every assertion through both public entries** — the Node `convertHtmlToDocx` and the browser `convertHtmlToDocxUint8Array` (its inline path runs headless) — because option forwarding is duplicated per entry and has drifted before (a new option reaching one entry but not the other, with no compiler error).
@@ -110,6 +110,10 @@ Each writes a result to `output/guards/<id>.json` (via `tools/guard-result.ts`, 
 - **`guard:border-width`** — `parseInlineStyle` support for the `border-width` shorthand and per-side `border-{top,right,bottom,left}-width` longhands. Asserts uniform and 4-value shorthand expansion (CSS top/right/bottom/left order), keyword widths (`thin`/`medium`/`thick`), that each longhand only sets its own side, and that `border-width: 0` leaves borders undefined — matching the same "0 means no border" convention as `parseBorderShorthand` and `computedBorderSide`. CI — no Playwright/LibreOffice.
 - **`guard:document-canvas`** — DOCX exports must not follow dark-theme text colors. Asserts near-white computed `color` with no dark fill is dropped (so Word doesn’t get invisible light-on-white runs), while light text on a dark shaded block is kept; plus an optional Playwright check that the Node computed path forces `prefers-color-scheme: light`. CI for the remap/OOXML checks.
 - **`guard:image-spacing`** — image paragraphs keep a floor of before/after spacing so figures don’t smash into the next heading or body when web margins were zeroed (flex/grid gap layouts). Skipped inside flex cards. CI — no Playwright/LibreOffice.
+- **`guard:font-family-map`** — CSS `font-family` → `w:rFonts`. Asserts `"Segoe UI Symbol"` keeps its own font (Arial lacks its ballot-box glyphs, which then render as unrelated glyphs in Word) while plain `"Segoe UI"` still maps to Arial. A guard rather than a suite case because LibreOffice on Linux has no Segoe UI Symbol. Writes `output/guards/font-family-map/output.docx` for checking in Word. CI — no Playwright/LibreOffice.
+- **`guard:table-cell-layout`** — content inside table cells. Asserts exact image widths for `max-width` px / % and for a cell's content box (column minus the cell's own padding), `max-width` percentages on boxed blocks, the separator paragraph and gap between two nested tables in one cell, and `w:vAlign` from `vertical-align` (unset → center). An optional Playwright section checks class and inline `vertical-align` through `styleSource: "computed"`. CI.
+- **`guard:page-break-scope`** — a pending page break lands on exactly one block: the first child of a container (plain or shaded), the first `<li>` of a list, and never on nested lists or later blocks of a list item. CI — no Playwright/LibreOffice.
+- **`guard:vertical-text`** — CSS writing modes on table cells → `w:textDirection`, narrow rotated columns, row height from the longest `<br>` line, and half-turn transforms (`rotate(180deg)`, computed `matrix()` with float noise) → bottom-to-top. CI — no Playwright/LibreOffice.
 
 ```bash
 npm run guard:ci                 # all CI-safe guards below, in one run (what CI/publish invoke)
@@ -125,6 +129,10 @@ npm run guard:bookmark-length    # CI
 npm run guard:border-width       # CI
 npm run guard:document-canvas    # CI (Playwright section optional)
 npm run guard:image-spacing      # CI
+npm run guard:font-family-map    # CI (sample DOCX → output/guards/font-family-map/)
+npm run guard:table-cell-layout  # CI (Playwright section optional)
+npm run guard:page-break-scope   # CI
+npm run guard:vertical-text      # CI
 npm run guard:pack-smoke         # CI
 npm run guard:page-break         # structural page breaks (needs LibreOffice)
 npm run guard:computed-parity    # maintainer-only, needs Playwright

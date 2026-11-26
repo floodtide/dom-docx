@@ -964,6 +964,105 @@ const EDGE_TEST_CASES: TestCase[] = [
       </table>
     `,
   },
+  {
+    name: "image-max-width-constraints",
+    description: "`<img>` honors `max-width` (px / %) and shrinks to fit a narrow, padded table cell",
+    // Images were only clamped to the page-wide MAX_IMAGE_WIDTH_PX: `max-width` was
+    // ignored (and `%` misparsed as a length), and an image in a narrow cell was emitted
+    // at full size, overflowing the cell. The right cell's own `padding` (not the table
+    // `cellpadding`) must also shrink the space available to the image.
+    html: `
+      <p><strong>max-width:120px</strong></p>
+      <p><img src="${TEST_IMAGE_260x140}" width="${TEST_IMAGE_W}" height="${TEST_IMAGE_H}" style="max-width:120px;height:auto" alt="Chart A"></p>
+      <p><strong>max-width:25%</strong></p>
+      <p><img src="${TEST_IMAGE_260x140}" width="${TEST_IMAGE_W}" height="${TEST_IMAGE_H}" style="max-width:25%;height:auto" alt="Chart B"></p>
+      <p><strong>max-width:100% in narrow cells</strong></p>
+      <table border="1" cellpadding="4" style="border-collapse:collapse;width:100%;table-layout:fixed">
+        <colgroup><col style="width:25%"><col style="width:50%"><col style="width:25%"></colgroup>
+        <tr>
+          <td><img src="${TEST_IMAGE_260x140}" width="${TEST_IMAGE_W}" height="${TEST_IMAGE_H}" style="max-width:100%;height:auto" alt="Chart C"></td>
+          <td>Middle column text that should keep its width.</td>
+          <td style="padding:24px"><img src="${TEST_IMAGE_260x140}" width="${TEST_IMAGE_W}" height="${TEST_IMAGE_H}" style="max-width:100%;height:auto" alt="Chart D"></td>
+        </tr>
+      </table>
+    `,
+  },
+  {
+    name: "table-cell-adjacent-nested-tables",
+    description: "Two nested tables back-to-back in one cell stay separate (gap from `margin`)",
+    // Word merges two tables that touch into one table. Inside a cell, a 2-column table
+    // followed directly by a 3-column table must stay two tables with the CSS gap
+    // between them, not fuse into one grid.
+    html: `
+      <table border="1" cellpadding="8" style="border-collapse:collapse;width:100%">
+        <tr>
+          <td style="width:30%"><strong>Outer cell</strong></td>
+          <td>
+            <table border="1" cellpadding="4" style="border-collapse:collapse;width:100%;margin-bottom:12px">
+              <tr style="background:#dbe9f6"><td>First A</td><td>First B</td></tr>
+              <tr><td>1</td><td>2</td></tr>
+            </table>
+            <table border="1" cellpadding="4" style="border-collapse:collapse;width:100%">
+              <tr style="background:#f6e3db"><td>Second A</td><td>Second B</td><td>Second C</td></tr>
+              <tr><td>3</td><td>4</td><td>5</td></tr>
+            </table>
+          </td>
+        </tr>
+      </table>
+    `,
+  },
+  {
+    name: "table-cell-vertical-align",
+    description: "`vertical-align: top / middle / bottom` on cells next to a tall cell",
+    // Cell `vertical-align` was only parsed for super/sub runs, so every horizontal
+    // cell rendered top-aligned in Word regardless of the CSS.
+    html: `
+      <table border="1" cellpadding="6" style="border-collapse:collapse;width:100%">
+        <tr>
+          <td style="vertical-align:top">Line 1<br>Line 2<br>Line 3<br>Line 4<br>Line 5<br>Line 6</td>
+          <td style="vertical-align:top;background:#eef">top</td>
+          <td style="vertical-align:middle;background:#efe">middle</td>
+          <td style="vertical-align:bottom;background:#fee">bottom</td>
+        </tr>
+      </table>
+    `,
+  },
+  {
+    name: "table-vertical-text-rotate-180",
+    description: "`writing-mode: vertical-rl` + `transform: rotate(180deg)` header reads bottom-to-top",
+    // The common "upward" header idiom. Without reading `transform`, the label is
+    // emitted top-to-bottom (tbRl) — the opposite reading direction of the browser.
+    html: `
+      <table border="1" cellpadding="6" style="border-collapse:collapse;width:100%">
+        <tr>
+          <th style="writing-mode:vertical-rl;transform:rotate(180deg)">Upward label</th>
+          <th style="writing-mode:vertical-rl">Downward label</th>
+          <th align="left">Value</th>
+        </tr>
+        <tr><td>A</td><td>B</td><td>$1.2M</td></tr>
+      </table>
+    `,
+  },
+  {
+    name: "table-vertical-text-multiline",
+    description: "Rotated header with `<br>` sizes the row to its longest line, not the joined text",
+    // Minimum row height for rotated text was estimated from all lines joined into one
+    // string, so a two-line label made the row roughly twice as tall as the browser.
+    html: `
+      <table border="1" cellpadding="6" style="border-collapse:collapse;width:100%">
+        <tr>
+          <th style="writing-mode:vertical-rl">Quarterly<br>revenue<br>growth</th>
+          <th align="left">Value</th>
+        </tr>
+        <tr><td>Q1</td><td>12%</td></tr>
+      </table>
+    `,
+  },
+  // Covered by non-visual guards instead (the visual harness can't show them):
+  // - "Segoe UI Symbol" font mapping → tools/font-family-map-test.ts (LibreOffice on
+  //   Linux lacks the font and falls back for both).
+  // - page-break scope (one break per container / list) → tools/page-break-scope-test.ts
+  //   (the HTML reference is a single screen capture with no pages).
 ];
 
 export function generateTestCases(): TestCase[] {

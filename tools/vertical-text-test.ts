@@ -107,6 +107,48 @@ async function main(): Promise<void> {
     (tbRlAliasXml.match(/<w:textDirection w:val="tbRl"\s*\/>/g) ?? []).length === 1,
   );
 
+  console.log("\nhalf-turn transform (upward headers):");
+  const directionFor = async (transform: string): Promise<string | undefined> => {
+    const xml = await documentXml(`
+      <table><tr><th style="writing-mode:vertical-rl;transform:${transform}">label</th></tr></table>`);
+    return xml.match(/<w:textDirection w:val="(\w+)"/)?.[1];
+  };
+  for (const transform of ["rotate(180deg)", "rotate(-180deg)", "rotate(.5turn)", "rotate(540deg)"]) {
+    const dir = await directionFor(transform);
+    check(`vertical-rl + ${transform} → btLr`, dir === "btLr", String(dir));
+  }
+  // What getComputedStyle reports for rotate(180deg): float noise, not exact zeros.
+  const computedMatrix = "matrix(-1, 1.22465e-16, -1.22465e-16, -1, 0, 0)";
+  const matrixDir = await directionFor(computedMatrix);
+  check("vertical-rl + computed matrix(-1, ~0, ~0, -1, 0, 0) → btLr", matrixDir === "btLr", String(matrixDir));
+  for (const transform of ["rotate(90deg)", "scale(2)", "none"]) {
+    const dir = await directionFor(transform);
+    check(`vertical-rl + ${transform} stays tbRl`, dir === "tbRl", String(dir));
+  }
+  const horizontalXml = await documentXml(`
+    <table><tr><th style="transform:rotate(180deg)">flat</th></tr></table>`);
+  check(
+    "transform alone (no writing-mode) adds no textDirection",
+    !/<w:textDirection /.test(horizontalXml),
+  );
+
+  console.log("\nmulti-line rotated header height:");
+  const rowHeight = async (label: string): Promise<number> => {
+    const xml = await documentXml(`
+      <table border="1" cellpadding="6" style="border-collapse:collapse">
+        <tr><th style="writing-mode:vertical-rl">${label}</th><td>value</td></tr>
+      </table>`);
+    return Number(xml.match(/<w:trHeight w:val="(\d+)"/)?.[1] ?? 0);
+  };
+  const joined = await rowHeight("Quarterly revenue growth");
+  const stacked = await rowHeight("Quarterly<br>revenue<br>growth");
+  const longestLine = await rowHeight("Quarterly");
+  check(
+    "<br> lines size the row by the longest line, not the joined text",
+    stacked > 0 && stacked === longestLine && stacked < joined * 0.6,
+    `stacked ${stacked} · longest line ${longestLine} · joined ${joined} twips`,
+  );
+
   console.log("\ncomputed-path mapping:");
   const computed = parsedCssFromComputedRecord({
     writingMode: "vertical-rl",
@@ -116,6 +158,23 @@ async function main(): Promise<void> {
     "computed writingMode / textOrientation land in ParsedCss",
     computed.writingMode === "vertical-rl" && computed.textOrientation === "mixed",
     JSON.stringify({ writingMode: computed.writingMode, textOrientation: computed.textOrientation }),
+  );
+  const computedTransform = parsedCssFromComputedRecord({
+    writingMode: "vertical-rl",
+    transform: computedMatrix,
+  });
+  check(
+    "computed transform lands in ParsedCss",
+    computedTransform.transform === computedMatrix,
+    String(computedTransform.transform),
+  );
+  check(
+    "computed transform 'none' is dropped",
+    parsedCssFromComputedRecord({ transform: "none" }).transform === undefined,
+  );
+  check(
+    "computed max-width % stays a percentage",
+    parsedCssFromComputedRecord({ maxWidth: "50%" }).maxWidthPercent === 50,
   );
 
   const ok = failures === 0;
