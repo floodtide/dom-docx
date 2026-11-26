@@ -47,6 +47,9 @@ export const BODY_LINE_HEIGHT = 336;
 /** Browser default `<p>` margin is 1em at the harness body font size (14px). */
 export const DEFAULT_PARAGRAPH_MARGIN_PX = 14;
 
+/** UA `dd { margin-inline-start: 40px }` — definition indent under its `<dt>`. */
+export const DEFAULT_DD_INDENT_PX = 40;
+
 /** Blockquote vertical margin (1em at 14px body font in the HTML harness). */
 export const BLOCKQUOTE_MARGIN_PX = 14;
 

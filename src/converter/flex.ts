@@ -11,8 +11,7 @@ import {
   WidthType,
 } from "docx";
 import type { AnyNode, Element } from "domhandler";
-import { PRINTABLE_CONTENT_WIDTH_TWIPS } from "./constants.js";
-import { visibleCellBorders } from "./bordered-block.js";
+import { availableBlockWidthTwips, containerTableIndent, visibleCellBorders } from "./bordered-block.js";
 import { cssToBlockLayout, isHiddenElement, layoutForNativeShadedBlock, pxToTwips, type ParsedCss } from "./css.js";
 import type { StyleResolver } from "./style-resolver.js";
 import { INLINE_STYLE_RESOLVER } from "./style-resolver.js";
@@ -136,10 +135,11 @@ function distributeFlexItemWidths(weights: number[], total: number): number[] {
 function rowColumnPlan(
   items: FlexItemContent[],
   gapTwips: number,
+  widthTwips: number,
 ): { columnWidths: number[]; totalWidth: number } {
   const itemCount = items.length;
   const gapTotal = gapTwips * Math.max(0, itemCount - 1);
-  const available = Math.max(0, PRINTABLE_CONTENT_WIDTH_TWIPS - gapTotal);
+  const available = Math.max(0, widthTwips - gapTotal);
   const weights = items.map((item) =>
     Math.max(minContentWidthTwips(32), item.intrinsicWidthTwips ?? 0),
   );
@@ -200,7 +200,11 @@ export function makeFlexRowTable(
   containerLayout: BlockLayout,
 ): Table {
   const gapTwips = gap ?? 0;
-  const { columnWidths, totalWidth } = rowColumnPlan(items, gapTwips);
+  const { columnWidths, totalWidth } = rowColumnPlan(
+    items,
+    gapTwips,
+    availableBlockWidthTwips(containerLayout),
+  );
   const cells: TableCell[] = [];
 
   items.forEach((item, index) => {
@@ -257,6 +261,7 @@ export function makeFlexRowTable(
   const inner = new Table({
     width: { size: totalWidth, type: WidthType.DXA },
     columnWidths,
+    ...(needsFlexWrapper(containerLayout) ? {} : containerTableIndent(containerLayout)),
     layout: "fixed",
     borders: borderlessTableBorders(),
     rows: [new TableRow(rowOptions)],
@@ -274,32 +279,39 @@ function containerPaddingMargins(layout: BlockLayout) {
   };
 }
 
-function wrapInnerTable(inner: Table, containerLayout: BlockLayout): Table {
-  const needsWrapper =
+/** Fill or padding on the flex container → an outer one-cell wrapper table. */
+function needsFlexWrapper(containerLayout: BlockLayout): boolean {
+  return (
     Boolean(containerLayout.shading?.fill) ||
     Boolean(
       containerLayout.paddingTop ||
         containerLayout.paddingBottom ||
         containerLayout.paddingLeft ||
         containerLayout.paddingRight,
-    );
+    )
+  );
+}
 
-  if (!needsWrapper) return inner;
+/** Wraps `inner` when needed; the outermost table carries the container offset. */
+function wrapInnerTable(inner: Table, containerLayout: BlockLayout): Table {
+  if (!needsFlexWrapper(containerLayout)) return inner;
+  const width = availableBlockWidthTwips(containerLayout);
 
   const padLayout = containerLayout.shading
     ? layoutForNativeShadedBlock(containerLayout)
     : containerLayout;
 
   return new Table({
-    width: { size: PRINTABLE_CONTENT_WIDTH_TWIPS, type: WidthType.DXA },
-    columnWidths: [PRINTABLE_CONTENT_WIDTH_TWIPS],
+    width: { size: width, type: WidthType.DXA },
+    columnWidths: [width],
+    ...containerTableIndent(containerLayout),
     layout: "fixed",
     borders: borderlessTableBorders(),
     rows: [
       new TableRow({
         children: [
           new TableCell({
-            width: { size: PRINTABLE_CONTENT_WIDTH_TWIPS, type: WidthType.DXA },
+            width: { size: width, type: WidthType.DXA },
             shading: containerLayout.shading
               ? { type: ShadingType.CLEAR, ...containerLayout.shading }
               : undefined,
@@ -347,7 +359,7 @@ export function makeFlexColumnTable(
   // sizing it to the full printable width would overflow the wrapper to the page edge.
   const innerWidth = Math.max(
     0,
-    PRINTABLE_CONTENT_WIDTH_TWIPS -
+    availableBlockWidthTwips(containerLayout) -
       (containerLayout.paddingLeft ?? 0) -
       (containerLayout.paddingRight ?? 0),
   );
@@ -381,6 +393,7 @@ export function makeFlexColumnTable(
   const inner = new Table({
     width: { size: innerWidth, type: WidthType.DXA },
     columnWidths: [innerWidth],
+    ...(needsFlexWrapper(containerLayout) ? {} : containerTableIndent(containerLayout)),
     layout: "fixed",
     borders: borderlessTableBorders(),
     rows,

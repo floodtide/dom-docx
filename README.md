@@ -123,7 +123,7 @@ Input is a **body HTML fragment**, same as the API. `--help` for all options.
 **Not supported in v1.x:**
 
 - External stylesheets on the inline path (use computed or inline all styles)
-- Web fonts, CSS grid/float layout, forms, `<pre>` polish, `<dl>`, table `rowspan`
+- Web fonts, CSS grid/float layout, forms, `<pre>` polish, table `rowspan`
 - Header/footer first/even page variants; guaranteed multi-page layout fidelity
 - Complex SVG (paths, gradients, `<use>`) unless `rasterizeInPlace` is used on a live rendered page
 

@@ -22,24 +22,55 @@ function countBorderSides(borders?: BlockBorders): number {
 
 const BORDERLESS = { style: BorderStyle.NONE, size: 0, color: "auto" };
 
+/** Inherited container offsets on each side (twips). */
+function containerOffsets(layout: BlockLayout): { left: number; right: number } {
+  return {
+    left: Math.max(0, layout.containerIndentLeft ?? 0),
+    right: Math.max(0, layout.containerIndentRight ?? 0),
+  };
+}
+
+/** Width a top-level wrapper table may use: the text column minus inherited offsets. */
+export function availableBlockWidthTwips(layout: BlockLayout): number {
+  const { left, right } = containerOffsets(layout);
+  return Math.max(1, PRINTABLE_CONTENT_WIDTH_TWIPS - left - right);
+}
+
+/** `w:tblInd` option for a wrapper table inside an indented container. */
+export function containerTableIndent(layout: BlockLayout): { indent?: { size: number; type: typeof WidthType.DXA } } {
+  const { left } = containerOffsets(layout);
+  return left > 0 ? { indent: { size: left, type: WidthType.DXA } } : {};
+}
+
+/** The block's own indent, minus what its containers contributed (the table carries that). */
+function ownIndentLayout(layout: BlockLayout): BlockLayout {
+  const { left, right } = containerOffsets(layout);
+  const own = (total: number | undefined, offset: number) => {
+    const value = (total ?? 0) - offset;
+    return value > 0 ? value : undefined;
+  };
+  return { ...layout, indentLeft: own(layout.indentLeft, left), indentRight: own(layout.indentRight, right) };
+}
+
 function resolveTableWidth(layout: BlockLayout): number {
   // A shaded/bordered block becomes a top-level wrapper table, so its CSS `width`
-  // resolves against the page's printable content width — there is no intermediate
-  // containing block in the flattened document flow to be a percentage basis.
+  // resolves against the printable content width, narrowed by any indented
+  // containers it sits in (their content box is the percentage basis).
+  const available = availableBlockWidthTwips(layout);
   const fromPercent =
     layout.widthPercent !== undefined
-      ? Math.round((PRINTABLE_CONTENT_WIDTH_TWIPS * layout.widthPercent) / 100)
+      ? Math.round((available * layout.widthPercent) / 100)
       : undefined;
-  const requested = fromPercent ?? layout.widthTwips ?? PRINTABLE_CONTENT_WIDTH_TWIPS;
+  const requested = fromPercent ?? layout.widthTwips ?? available;
   const maxFromPercent =
     layout.maxWidthPercent !== undefined
-      ? Math.round((PRINTABLE_CONTENT_WIDTH_TWIPS * layout.maxWidthPercent) / 100)
+      ? Math.round((available * layout.maxWidthPercent) / 100)
       : undefined;
   const maxWidth = Math.min(layout.maxWidthTwips ?? Infinity, maxFromPercent ?? Infinity);
   const clampedByMax = Math.min(requested, maxWidth);
   // Never exceed the printable width: a table wider than the page reflows badly in
   // Word/LibreOffice. Floor at 1 twip so the table stays structurally valid.
-  return Math.max(1, Math.min(PRINTABLE_CONTENT_WIDTH_TWIPS, clampedByMax));
+  return Math.max(1, Math.min(available, clampedByMax));
 }
 
 function borderlessTableBorders() {
@@ -133,7 +164,7 @@ export function makeBorderedTableBlock(
   layout: BlockLayout,
   typography: RunTypography,
 ): Table {
-  const { borders, shading, ...paragraphLayout } = layout;
+  const { borders, shading, ...paragraphLayout } = ownIndentLayout(layout);
   const innerParagraph = makeTableCellInnerParagraph(runs, paragraphLayout, typography);
 
   return makeShadedContainerTable([innerParagraph], layout, borders);
@@ -148,7 +179,7 @@ export function makeShadedBlockTable(
   const innerParagraph = makeTableCellInnerParagraph(
     runs,
     {
-      ...layout,
+      ...ownIndentLayout(layout),
       shading: undefined,
       borders: undefined,
     },
@@ -170,6 +201,7 @@ export function makeShadedContainerTable(
   return new Table({
     width: { size: tableWidthTwips, type: WidthType.DXA },
     columnWidths: [tableWidthTwips],
+    ...containerTableIndent(layout),
     layout: "fixed",
     borders: borderlessTableBorders(),
     rows: [

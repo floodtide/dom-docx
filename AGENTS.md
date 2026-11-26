@@ -216,7 +216,7 @@ Parsed from `style=""` on any element:
 | `line-height` | Unitless (`1.5`, `2`), `%`, `px`, `pt`, `em` — paragraph line spacing |
 | `font-weight` | `bold`, `600` |
 | `font-style` | `italic` |
-| `margin`, `margin-*` | `margin-top:0`, `margin:8px 0` |
+| `margin`, `margin-*` | `margin-top:0`, `margin:8px 0`; `margin-left:40px` on a `<div>` indents everything inside it (text, lists, tables, quotes, boxes) |
 | `padding`, `padding-*` | `padding:8px`, `padding-left:12px` |
 | `border`, `border-*` | Blockquote left rule, boxed sections |
 | `display` | `flex`, `block`, `inline-block` |
@@ -242,6 +242,7 @@ Everything else is ignored silently.
 | `table`, `tr`, `td`, `th` | Data tables (`colspan` supported) |
 | `thead`, `tbody`, `tfoot` | Table structure (rows collected) |
 | `blockquote` | Indented quotations |
+| `dl`, `dt`, `dd` | Definition lists (glossaries); `dd` is indented under its term |
 | `hr` | Thematic break |
 | `break-before: page`, `break-after: page` | Explicit page breaks — see [API.md](./API.md#supported-html--css) |
 | `page: portrait \| landscape \| Name` | Per-section orientation on top-level blocks (inline path); class→page rules need `styleSource: "computed"` — [API.md](./API.md#mixed-page-orientation) |

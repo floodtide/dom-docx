@@ -1124,12 +1124,14 @@ export function typographyFromBlockElement(
 export function layoutForNativeShadedBlock(layout: BlockLayout): BlockLayout {
   if (!layout.shading?.fill) return layout;
 
+  // The block's own margin/padding is emulated elsewhere (the band spans the full
+  // width), but an offset inherited from indented containers moves the band itself.
   return {
     ...layout,
     spacingBefore: undefined,
     spacingAfter: undefined,
-    indentLeft: undefined,
-    indentRight: undefined,
+    indentLeft: layout.containerIndentLeft,
+    indentRight: layout.containerIndentRight,
   };
 }
 

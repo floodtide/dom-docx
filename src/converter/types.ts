@@ -21,6 +21,13 @@ export interface BlockBorders {
 
 /** Paragraph-level layout: shading, borders, spacing, indentation. */
 export interface BlockLayout {
+  /**
+   * Offset (twips) inherited from indented ancestor containers — part of
+   * `indentLeft`/`indentRight`. Wrapper tables (shaded/bordered boxes, flex rows)
+   * apply it as `w:tblInd` + a narrower width instead of as inner paragraph indent.
+   */
+  containerIndentLeft?: number;
+  containerIndentRight?: number;
   alignment?: (typeof import("docx").AlignmentType)[keyof typeof import("docx").AlignmentType];
   shading?: { fill?: string; color?: string };
   spacingBefore?: number;

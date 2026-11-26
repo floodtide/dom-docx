@@ -471,7 +471,7 @@ Parsed from `style=""` (and from computed snapshots on the computed path):
 | `line-height` | Unitless (`1`, `1.15`, `1.5`, `2`), `%`, `px`, `pt`, `em` → `AT_LEAST` paragraph line spacing; default 1.4× when omitted |
 | `font-weight`, `font-style` | Including `bold`, `600`, `italic` |
 | `list-style-type` | decimal, lower/upper-alpha, lower/upper-roman, disc, circle, square |
-| `margin`, `margin-*` | `px`, `pt`, `em` |
+| `margin`, `margin-*` | `px`, `pt`, `em`. On a container, left/right margin + padding indents everything inside it and accumulates through nesting: paragraphs and list items (`w:ind`), tables, shaded/bordered boxes and flex rows (`w:tblInd` + a narrower width), blockquotes |
 | `padding`, `padding-*` | `px`, `pt`, `em` |
 | `border`, `border-*` | Width + color shorthand |
 | `display` | `block`, `inline-block`, `flex` |
@@ -646,6 +646,7 @@ HTML fragment
 | `div` with `display:flex` | Borderless flex table (row or column) |
 | `div` with background/border | Shaded or bordered 1×1 table wrapper when needed |
 | `blockquote` | Indented paragraph with left border |
+| `dl` / `dt` / `dd` | Paragraphs; `dd` indented 40px (browser default) unless it sets `margin-left`, accumulating for nested lists |
 | `a` | Hyperlink runs |
 | `img` | Embedded `ImageRun` (`data:` URLs, or via `imageResolver`) |
 | `svg` (low-complexity) | Native DOCX blocks — `<rect>` bands + `<text>` (bar/funnel charts); complex SVG rasterized when `rasterizeInPlace` is set |

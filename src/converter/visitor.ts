@@ -24,6 +24,8 @@ import {
   LIST_HANGING_TWIPS,
   LIST_LEVEL_LEFT_TWIPS,
   DEFAULT_PARAGRAPH_MARGIN_PX,
+  DEFAULT_DD_INDENT_PX,
+  PRINTABLE_CONTENT_WIDTH_TWIPS,
   HEADING_FONT_HALF_POINTS,
   HEADING_LEVELS,
   HEADING_MARGIN_EM,
@@ -114,6 +116,17 @@ function prevElementSibling(element: Element): Element | undefined {
 }
 
 /** Block containers never inherit shading — each block gets its own paragraph shading. */
+/**
+ * UA `<dd>` indent on the inline path (the computed path already carries it in
+ * `margin-left`). An author `margin-left` — including `margin` shorthand — replaces it.
+ */
+function applyDefaultDdIndent(element: Element, layout: BlockLayout, ctx: VisitorContext): BlockLayout {
+  if (element.name.toLowerCase() !== "dd") return layout;
+  if (ctx.styleResolver.source === "computed") return layout;
+  if (ctx.styleResolver.getCss(element).marginLeft !== undefined) return layout;
+  return { ...layout, indentLeft: (layout.indentLeft ?? 0) + pxToTwips(DEFAULT_DD_INDENT_PX) };
+}
+
 function applyDefaultParagraphMargins(
   element: Element,
   layout: BlockLayout,
@@ -204,7 +217,7 @@ function resolveBlockLayout(ctx: VisitorContext, element: Element): BlockLayout 
       element,
       applyDefaultParagraphMargins(
         element,
-        layoutFromElement(element, ctx.styleResolver),
+        applyDefaultDdIndent(element, layoutFromElement(element, ctx.styleResolver), ctx),
         ctx,
       ),
       ctx,
@@ -216,8 +229,10 @@ function resolveBlockLayout(ctx: VisitorContext, element: Element): BlockLayout 
     ...local,
     alignment: local.alignment ?? inherited.alignment,
     indentLeft: sumIndent(inherited.indentLeft, local.indentLeft),
-    indentRight: local.indentRight ?? inherited.indentRight,
+    indentRight: sumIndent(inherited.indentRight, local.indentRight),
     borders: local.borders ?? inherited.borders,
+    containerIndentLeft: inherited.indentLeft,
+    containerIndentRight: inherited.indentRight,
   };
   if (ctx.pageBreakBeforeNext) {
     layout.pageBreakBefore = true;
@@ -341,6 +356,10 @@ function makeParagraph(
   const hasVerticalPad = (layout.paddingTop ?? 0) > 0 || (layout.paddingBottom ?? 0) > 0;
   const padLeft = layout.paddingLeft ?? 0;
   const padRight = layout.paddingRight ?? 0;
+  // Shaded bands span the full width, so only an offset inherited from indented
+  // containers moves the band (the block's own padding is emulated below).
+  const offsetLeft = isShaded ? (layout.containerIndentLeft ?? 0) : 0;
+  const offsetRight = isShaded ? (layout.containerIndentRight ?? 0) : 0;
   const isListItem = Boolean(extra.numbering);
 
   // An image in the document flow needs breathing room from adjacent blocks. Web
@@ -365,8 +384,8 @@ function makeParagraph(
           ...layout,
           spacingBefore: undefined,
           spacingAfter: undefined,
-          indentLeft: undefined,
-          indentRight: padRight > 0 ? padRight : undefined,
+          indentLeft: offsetLeft > 0 ? offsetLeft : undefined,
+          indentRight: padRight + offsetRight > 0 ? padRight + offsetRight : undefined,
         }
       : spacingLayout,
   );
@@ -377,7 +396,8 @@ function makeParagraph(
   const paragraphExtra: Record<string, unknown> = { ...extra };
 
   if (isShaded && padLeft > 0) {
-    paragraphExtra.tabStops = [{ type: TabStopType.LEFT, position: padLeft }];
+    // Tab stops are measured from the page margin, not the paragraph indent.
+    paragraphExtra.tabStops = [{ type: TabStopType.LEFT, position: offsetLeft + padLeft }];
     paragraphChildren = [
       new TextRun({
         text: "\t",
@@ -477,6 +497,7 @@ function blockquoteLayout(
   element: Element,
   styleResolver: StyleResolver,
   parentIndentTwips = 0,
+  parentIndentRightTwips = 0,
 ): BlockLayout {
   const css = styleResolver.getCss(element);
   let local = cssToBlockLayout(css);
@@ -509,7 +530,10 @@ function blockquoteLayout(
     }
     layout = {
       ...local,
-      indentLeft: sumIndent(local.indentLeft, pxToTwips(BLOCKQUOTE_INDENT_PX * depth)),
+      // One quote step past the parent's content edge (which already holds any
+      // outer quotes' steps and padding).
+      indentLeft: sumIndent(parentIndentTwips, sumIndent(local.indentLeft, pxToTwips(BLOCKQUOTE_INDENT_PX))),
+      indentRight: sumIndent(parentIndentRightTwips, local.indentRight),
       marginTop: sumTwips(local.marginTop, pxToTwips(BLOCKQUOTE_MARGIN_PX)),
       marginBottom: sumTwips(local.marginBottom, pxToTwips(BLOCKQUOTE_MARGIN_PX)),
     };
@@ -530,7 +554,7 @@ function blockquoteLayout(
       spacingBefore: local.paddingTop,
       spacingAfter: local.paddingBottom,
       indentLeft: sumIndent(parentIndentTwips, ownOffset),
-      indentRight: local.paddingRight,
+      indentRight: sumIndent(parentIndentRightTwips, local.paddingRight),
     };
   }
 
@@ -902,6 +926,21 @@ function processBlockContainer(
     inheritedLayout: inheritAlignment,
     pageBreakBeforeNext: undefined,
   };
+  // The container's left/right margin + padding offsets its children's boxes, so
+  // block children inherit it as indent (it accumulates through nesting, e.g. a `<dl>`
+  // inside a `<dd>`). `layout.indentLeft` already includes what this container
+  // inherited. Not for shaded containers: their table cell carries the offset.
+  const indentedChildCtx: VisitorContext =
+    layout.indentLeft !== undefined || layout.indentRight !== undefined
+      ? {
+          ...childCtx,
+          inheritedLayout: {
+            ...inheritAlignment,
+            indentLeft: layout.indentLeft,
+            indentRight: layout.indentRight,
+          },
+        }
+      : childCtx;
 
   if (hasDirectBlockChild(element, ctx.styleResolver)) {
     const children = getDirectBlockChildren(element, ctx.styleResolver);
@@ -939,6 +978,8 @@ function processBlockContainer(
         const isFirst = blocks.length === 0;
         const flushLayout: BlockLayout = {
           alignment: layout.alignment,
+          indentLeft: layout.indentLeft,
+          indentRight: layout.indentRight,
           spacingBefore: isFirst ? layout.marginTop : undefined,
           pageBreakBefore: isFirst && forceBreakBefore ? true : undefined,
         };
@@ -950,7 +991,9 @@ function processBlockContainer(
     for (const child of element.children ?? []) {
       if (isElement(child) && isBlockElement(child, ctx.styleResolver)) {
         flushInline();
-        const visitCtx = forceBreakBefore ? { ...childCtx, pageBreakBeforeNext: true } : childCtx;
+        const visitCtx = forceBreakBefore
+          ? { ...indentedChildCtx, pageBreakBeforeNext: true }
+          : indentedChildCtx;
         blocks.push(...visitElement($, child, visitCtx));
         forceBreakBefore = elementRequestsPageBreakAfter(child, ctx.styleResolver);
       } else {
@@ -1292,9 +1335,15 @@ function processHeading($: CheerioAPI, element: Element, ctx: VisitorContext): D
 
 function processBlockquote($: CheerioAPI, element: Element, ctx: VisitorContext): DocxBlock[] {
   const depth = ctx.blockquoteDepth + 1;
-  const parentIndent =
-    ctx.blockquoteDepth > 0 ? (ctx.inheritedLayout?.indentLeft ?? 0) : 0;
-  const quoteLayout = blockquoteLayout(depth, element, ctx.styleResolver, parentIndent);
+  // The quote sits inside its parent's content box — an outer quote, or any
+  // indented container (`<div style="margin-left:40px"><blockquote>`).
+  const parentIndent = ctx.inheritedLayout?.indentLeft ?? 0;
+  const parentIndentRight = ctx.inheritedLayout?.indentRight ?? 0;
+  const quoteLayout: BlockLayout = {
+    ...blockquoteLayout(depth, element, ctx.styleResolver, parentIndent, parentIndentRight),
+    containerIndentLeft: parentIndent || undefined,
+    containerIndentRight: parentIndentRight || undefined,
+  };
   const childCtx: VisitorContext = {
     ...ctx,
     blockquoteDepth: depth,
@@ -1479,7 +1528,21 @@ export function visitElement(
           ),
         );
       }
-      tableBlocks.push(convertTable($, element, ctx.styleResolver, undefined, false, ctx.fieldOptions));
+      // An indented container (or blockquote) narrows and offsets the table, as the
+      // browser lays it out inside the container's content box.
+      const tableIndentLeft = ctx.inheritedLayout?.indentLeft ?? 0;
+      const tableIndentRight = ctx.inheritedLayout?.indentRight ?? 0;
+      tableBlocks.push(
+        convertTable(
+          $,
+          element,
+          ctx.styleResolver,
+          Math.max(1, PRINTABLE_CONTENT_WIDTH_TWIPS - tableIndentLeft - tableIndentRight),
+          false,
+          ctx.fieldOptions,
+          tableIndentLeft,
+        ),
+      );
       const bottomSpacer = marginSpacer(tableCss.marginBottom);
       if (bottomSpacer) tableBlocks.push(bottomSpacer);
       blocks = tableBlocks;

@@ -1378,6 +1378,8 @@ export function convertTable(
   contentWidthTwips: number = CONTENT_WIDTH_TWIPS,
   fillParent = false,
   fieldOptions?: InlineFieldOptions,
+  /** Left offset from an indented container (`w:tblInd`); size against `contentWidthTwips`. */
+  indentLeftTwips = 0,
 ): Table {
   const trElements = collectRowElements($, table);
   const parsedRows = parseRows($, trElements, table, styleResolver);
@@ -1400,11 +1402,14 @@ export function convertTable(
   const plan = tableBorderPlan(table, styleResolver);
   const alignment = tableAlignment(table);
 
+  // Word resolves a pct table width against the full text column, not an indented
+  // container — so an indented table states its resolved width in twips instead.
+  const usePercent = declared.percent !== undefined && indentLeftTwips <= 0;
   return new Table({
-    width:
-      declared.percent !== undefined
-        ? { size: declared.percent, type: WidthType.PERCENTAGE }
-        : { size: analysis.totalWidth, type: WidthType.DXA },
+    width: usePercent
+      ? { size: declared.percent!, type: WidthType.PERCENTAGE }
+      : { size: analysis.totalWidth, type: WidthType.DXA },
+    ...(indentLeftTwips > 0 ? { indent: { size: indentLeftTwips, type: WidthType.DXA } } : {}),
     // Positioning only matters when the table is narrower than its container.
     ...(alignment && analysis.totalWidth < contentWidthTwips ? { alignment } : {}),
     columnWidths: analysis.columnWidths,
