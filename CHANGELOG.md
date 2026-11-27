@@ -4,7 +4,9 @@ All notable changes to this project will be documented in this file.
 
 Format based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## Unreleased
+## 1.0.7
+
+Pull request [#17](https://github.com/floodtide/dom-docx/pull/17). Credit: [8xp4jtb47i5h](https://github.com/8xp4jtb47i5h).
 
 ### Fixed
 
